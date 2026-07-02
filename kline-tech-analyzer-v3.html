@@ -1,0 +1,2553 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>K线技术面标注工作台</title>
+  <style>
+    :root {
+      color-scheme: dark;
+      --side-width: 430px;
+      --bg: #0f1216;
+      --chrome: #171c22;
+      --panel: #1d242c;
+      --panel2: #26303a;
+      --line: #3a4652;
+      --muted: #9aa8b4;
+      --text: #eef3f6;
+      --green: #21c985;
+      --red: #ff5b63;
+      --blue: #68a7ff;
+      --yellow: #f0c84b;
+      --dark: #071014;
+    }
+
+    * { box-sizing: border-box; }
+    html, body { margin: 0; height: 100%; }
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: "Microsoft YaHei", "PingFang SC", system-ui, sans-serif;
+      overflow: hidden;
+    }
+
+    .app {
+      height: 100vh;
+      display: grid;
+      grid-template-rows: 46px minmax(0, 1fr) 28px;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: 280px 1fr auto;
+      align-items: center;
+      gap: 10px;
+      padding: 0 12px;
+      border-bottom: 1px solid var(--line);
+      background: var(--chrome);
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-weight: 800;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .logo {
+      width: 22px;
+      height: 22px;
+      border-radius: 5px;
+      background:
+        linear-gradient(135deg, transparent 45%, rgba(255,255,255,.8) 46% 54%, transparent 55%),
+        linear-gradient(145deg, var(--green), var(--blue));
+      flex: 0 0 auto;
+    }
+
+    .top-actions, .tool-group, .swatches, .vocab-actions {
+      display: flex;
+      align-items: center;
+      gap: 7px;
+    }
+
+    .top-actions {
+      flex-wrap: wrap;
+      min-width: 0;
+    }
+
+    button, .file-button, input {
+      font: inherit;
+    }
+
+    button, .file-button {
+      height: 32px;
+      border: 1px solid var(--line);
+      background: var(--panel2);
+      color: var(--text);
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      padding: 0 10px;
+      cursor: pointer;
+      user-select: none;
+      white-space: nowrap;
+    }
+
+    button:hover, .file-button:hover { border-color: #718191; }
+    button.primary { background: var(--green); color: var(--dark); border-color: transparent; font-weight: 800; }
+    button.secondary { background: #213247; border-color: #3f5d7d; }
+    button.active { border-color: var(--blue); background: #24354a; }
+    button.icon { width: 36px; padding: 0; font-size: 18px; }
+    button.width-btn {
+      width: 36px;
+      padding: 0;
+      font-size: 13px;
+      font-weight: 800;
+    }
+    input[type=file] { display: none; }
+
+    main {
+      min-height: 0;
+      display: grid;
+      grid-template-columns: 58px minmax(0, 1fr) var(--side-width);
+    }
+
+    .app.vocab-compact { --side-width: 430px; }
+    .app.vocab-wide { --side-width: 560px; }
+    .app.tools-compact main { grid-template-columns: 0 minmax(0, 1fr) var(--side-width); }
+    .app.tools-compact .tools {
+      display: none;
+    }
+
+    .tools {
+      min-height: 0;
+      overflow: auto;
+      padding: 10px 8px;
+      border-right: 1px solid var(--line);
+      background: #151a20;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .tool-group, .swatches {
+      flex-direction: column;
+      padding-bottom: 12px;
+      border-bottom: 1px solid #2d3742;
+    }
+
+    .swatch {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      border-radius: 50%;
+      padding: 0;
+      border: 2px solid #6d7a86;
+    }
+    .swatch.active { outline: 2px solid #fff; outline-offset: 2px; }
+    .swatch[data-color="#21c985"] { background: #21c985; }
+    .swatch[data-color="#ff5b63"] { background: #ff5b63; }
+    .swatch[data-color="#68a7ff"] { background: #68a7ff; }
+    .swatch[data-color="#f0c84b"] { background: #f0c84b; }
+    .swatch[data-color="#ffffff"] { background: #fff; }
+
+    .stage-area {
+      min-width: 0;
+      min-height: 0;
+      display: grid;
+      grid-template-rows: minmax(0, 1fr) 40px;
+      background: #0c0f13;
+    }
+
+    .canvas-scroll {
+      min-width: 0;
+      min-height: 0;
+      overflow: auto;
+      padding: 18px;
+      display: grid;
+      place-items: center;
+      background:
+        linear-gradient(90deg, rgba(255,255,255,.035) 1px, transparent 1px),
+        linear-gradient(rgba(255,255,255,.035) 1px, transparent 1px);
+      background-size: 24px 24px;
+    }
+
+    .chart-stage {
+      display: none;
+      position: relative;
+      width: min(100%, 1280px);
+      height: min(100%, 760px);
+      min-height: 560px;
+      border: 1px solid var(--line);
+      background: #fff;
+      box-shadow: 0 18px 48px rgba(0,0,0,.35);
+    }
+
+    .app.chart-mode .stage {
+      display: none;
+    }
+
+    .app.chart-mode .chart-stage {
+      display: block;
+    }
+
+    .chart-stage iframe {
+      width: 100%;
+      height: 100%;
+      border: 0;
+      display: block;
+      background: #fff;
+    }
+
+    #chartOverlayCanvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      z-index: 3;
+      touch-action: none;
+      pointer-events: none;
+    }
+
+    .app.chart-drawing #chartOverlayCanvas {
+      pointer-events: auto;
+      cursor: crosshair;
+    }
+
+    .stage {
+      position: relative;
+      width: min(100%, 1160px);
+      aspect-ratio: 16 / 9;
+      border: 1px solid var(--line);
+      background: #080b0e;
+      box-shadow: 0 18px 48px rgba(0,0,0,.35);
+    }
+
+    canvas {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      touch-action: none;
+    }
+
+    #imageCanvas { z-index: 1; }
+    #overlayCanvas { z-index: 2; }
+
+    .empty {
+      position: absolute;
+      inset: 0;
+      z-index: 3;
+      display: grid;
+      place-items: center;
+      text-align: center;
+      padding: 28px;
+      color: var(--muted);
+      pointer-events: none;
+    }
+
+    .empty strong {
+      display: block;
+      color: var(--text);
+      font-size: 21px;
+      margin-bottom: 8px;
+    }
+
+    .timeline {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 0 12px;
+      border-top: 1px solid var(--line);
+      background: #131820;
+      color: var(--muted);
+      font-size: 12px;
+      overflow: hidden;
+    }
+    .timeline b { color: var(--text); }
+
+    .mode-pill {
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    aside {
+      min-height: 0;
+      overflow: auto;
+      border-left: 1px solid var(--line);
+      background: #12171d;
+      padding: 12px;
+    }
+
+    .side-controls {
+      display: flex;
+      gap: 6px;
+      align-items: center;
+    }
+
+    .side-controls button {
+      height: 28px;
+      min-width: 30px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+
+    .panel-title {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 10px;
+      font-weight: 800;
+      color: #dbe5eb;
+    }
+
+    .panel-title button {
+      height: 26px;
+      min-width: 48px;
+      padding: 0 8px;
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .search input {
+      width: 100%;
+      height: 34px;
+      background: #0f1419;
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0 10px;
+      margin-bottom: 10px;
+    }
+
+    .quick-text {
+      display: grid;
+      gap: 8px;
+      margin-bottom: 14px;
+    }
+
+    .quick-text input {
+      width: 100%;
+      height: 34px;
+      background: #0f1419;
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 0 10px;
+    }
+
+    .vocab-list {
+      display: grid;
+      gap: 8px;
+    }
+
+    .vocab-meta {
+      color: var(--muted);
+      font-size: 12px;
+      margin: -2px 0 10px;
+      display: flex;
+      justify-content: space-between;
+      gap: 10px;
+    }
+
+    .vocab-item {
+      background: var(--panel);
+      border: 1px solid #2c3742;
+      border-radius: 8px;
+      padding: 11px;
+    }
+
+    .vocab-item b {
+      display: block;
+      font-size: 14px;
+      margin-bottom: 4px;
+    }
+
+    .vocab-item span {
+      display: block;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+      margin-bottom: 9px;
+    }
+
+    .vocab-actions button {
+      flex: 1;
+      height: 30px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+
+    .hint {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+      margin: 12px 0 0;
+    }
+
+    .compact-only { display: none; }
+    .app.vocab-compact .vocab-panel-title,
+    .app.vocab-compact .search,
+    .app.vocab-compact .quick-text,
+    .app.vocab-compact .vocab-meta,
+    .app.vocab-compact .vocab-list,
+    .app.vocab-compact .hint {
+      display: none;
+    }
+    .app.vocab-compact .compact-only {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+      margin-bottom: 12px;
+    }
+    .compact-pill {
+      min-height: 0;
+      width: auto;
+      padding: 0 12px;
+      letter-spacing: 0;
+      font-weight: 800;
+    }
+
+    .analysis-box {
+      margin-top: 14px;
+      padding-top: 14px;
+      border-top: 1px solid var(--line);
+      display: grid;
+      gap: 8px;
+    }
+
+    .analysis-actions,
+    .report-actions {
+      display: grid;
+      grid-template-columns: 1.4fr 1fr 1fr;
+      gap: 8px;
+    }
+
+    .report-actions button {
+      height: 36px;
+      font-weight: 800;
+    }
+
+    .tech-chips {
+      display: flex;
+      gap: 6px;
+      overflow-x: auto;
+      padding-bottom: 2px;
+    }
+
+    .tech-chips button {
+      height: 28px;
+      font-size: 12px;
+      padding: 0 9px;
+      border-color: #31404d;
+      background: #151d25;
+      flex: 0 0 auto;
+    }
+
+    button:disabled {
+      opacity: .55;
+      cursor: wait;
+    }
+
+    .section-note {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.5;
+      margin: -2px 0 2px;
+    }
+
+    .analysis-box input,
+    .analysis-box select,
+    .analysis-box textarea {
+      width: 100%;
+      background: #0f1419;
+      border: 1px solid var(--line);
+      color: var(--text);
+      border-radius: 6px;
+      padding: 8px 10px;
+      font: inherit;
+    }
+
+    .analysis-box textarea {
+      min-height: 96px;
+      resize: vertical;
+    }
+
+    #technicalSummary { min-height: 76px; }
+    #analysisTemplate { min-height: 58px; }
+    #stockReport { min-height: 240px; }
+
+    .holding-box {
+      display: grid;
+      gap: 8px;
+      padding: 10px;
+      border: 1px solid #2c3742;
+      border-radius: 8px;
+      background: #111820;
+    }
+
+    .holding-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+    }
+
+    #holdingNote {
+      min-height: 56px;
+    }
+
+    .data-card {
+      background: var(--panel);
+      border: 1px solid #2c3742;
+      border-radius: 8px;
+      padding: 10px;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.6;
+      white-space: pre-wrap;
+    }
+
+    .market-chart {
+      border: 1px solid #2c3742;
+      border-radius: 8px;
+      overflow: hidden;
+      background: #0b1015;
+    }
+
+    .chart-toolbar {
+      display: grid;
+      grid-template-columns: 1fr repeat(5, auto);
+      gap: 6px;
+      align-items: center;
+      padding: 8px;
+      border-bottom: 1px solid #2c3742;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    .chart-toolbar button {
+      height: 28px;
+      padding: 0 8px;
+      font-size: 12px;
+    }
+
+    .market-chart iframe {
+      display: block;
+      width: 100%;
+      height: 360px;
+      border: 0;
+      background: #fff;
+    }
+
+    .chart-note {
+      padding: 7px 9px;
+      border-top: 1px solid #2c3742;
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    footer {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 10px;
+      padding: 0 10px;
+      border-top: 1px solid var(--line);
+      background: #0f1317;
+      color: var(--muted);
+      font-size: 12px;
+    }
+
+    @media (max-width: 820px) {
+      body { overflow: auto; }
+      .app { height: auto; min-height: 100vh; }
+      header { grid-template-columns: 1fr; height: auto; padding: 8px 10px; }
+      main { grid-template-columns: 1fr; }
+      .app.tools-compact main { grid-template-columns: 1fr; }
+      .tools { flex-direction: row; border-right: 0; border-bottom: 1px solid var(--line); }
+      .tool-group, .swatches { flex-direction: row; border-bottom: 0; border-right: 1px solid #2d3742; padding-bottom: 0; padding-right: 12px; }
+      .stage-area { min-height: 70vh; }
+      aside { border-left: 0; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <div class="brand"><i class="logo"></i><span>K线技术面标注与摩洛哥股票分析工作台 V8</span></div>
+      <div class="top-actions">
+        <button id="chartModeBtn" class="secondary">K线图</button>
+        <button id="drawModeBtn">划线标注</button>
+        <button id="toggleChartDrawBtn">开始划线</button>
+        <button id="toggleToolsBtn">收起画线</button>
+        <button id="saveChartShotBtn">截图当前标签页</button>
+        <label class="file-button">导入截图<input id="fileInput" type="file" accept="image/*"></label>
+        <button id="pasteImageBtn">粘贴截图</button>
+        <button id="saveImageBtn" class="primary">保存图片</button>
+        <button id="undoBtn">撤销</button>
+        <button id="redoBtn">重做</button>
+        <button id="clearBtn">清空标注</button>
+      </div>
+      <button id="newBtn">新建</button>
+    </header>
+
+    <main>
+      <nav class="tools" aria-label="画线工具">
+        <div class="tool-group">
+          <button class="icon active" data-tool="trend" title="趋势线">╱</button>
+          <button class="icon" data-tool="arrow" title="箭头">➜</button>
+          <button class="icon" data-tool="hline" title="水平线">─</button>
+          <button class="icon" data-tool="box" title="箱体">□</button>
+          <button class="icon" data-tool="text" title="文字">T</button>
+          <button class="icon" data-tool="erase" title="擦除">⌫</button>
+        </div>
+        <div class="swatches">
+          <button class="swatch active" data-color="#21c985" title="绿色"></button>
+          <button class="swatch" data-color="#ff5b63" title="红色"></button>
+          <button class="swatch" data-color="#68a7ff" title="蓝色"></button>
+          <button class="swatch" data-color="#f0c84b" title="黄色"></button>
+          <button class="swatch" data-color="#ffffff" title="白色"></button>
+        </div>
+        <div class="tool-group">
+          <button class="width-btn" data-width="2" title="细线">细</button>
+          <button class="width-btn active" data-width="4" title="中线">中</button>
+          <button class="width-btn" data-width="7" title="粗线">粗</button>
+        </div>
+      </nav>
+
+      <section class="stage-area">
+        <div id="dropZone" class="canvas-scroll">
+          <div id="chartStage" class="chart-stage">
+            <iframe id="mainDelayedChartFrame" title="主窗口摩洛哥股票延迟K线" loading="lazy"></iframe>
+            <canvas id="chartOverlayCanvas"></canvas>
+          </div>
+          <div id="stage" class="stage">
+            <canvas id="imageCanvas"></canvas>
+            <canvas id="overlayCanvas"></canvas>
+            <div id="empty" class="empty">
+              <div><strong>导入K线截图开始标注</strong><span>支持拖放、导入或直接 Ctrl+V 粘贴截图。</span></div>
+            </div>
+          </div>
+        </div>
+        <div class="timeline">
+          <span>工具：<b id="toolName">趋势线</b></span>
+          <span>线宽：<b id="lineWidthText">中</b></span>
+          <span>状态：<b id="modeStateText" class="mode-pill">图表可操作</b></span>
+          <span id="imageInfo">未导入图片</span>
+        </div>
+      </section>
+
+      <aside>
+        <div class="compact-only">
+          <button id="expandSideBtn" class="compact-pill">展开词库</button>
+          <button id="compactAutoTechBtn" title="根据划线识别技术面">识别</button>
+          <button id="compactReportBtn" title="生成分析报告">报告</button>
+        </div>
+        <div class="panel-title vocab-panel-title">
+          <span>技术面词库</span>
+          <span class="side-controls">
+            <button id="narrowSideBtn" title="缩小右侧面板">-</button>
+            <button id="wideSideBtn" title="放大右侧面板">+</button>
+            <button id="compactSideBtn" title="收起词库，给图表留更多空间">收起</button>
+          </span>
+        </div>
+        <div class="search"><input id="vocabSearch" placeholder="搜索中文或法语"></div>
+        <div class="quick-text">
+          <input id="customText" placeholder="自定义文字，输入后点击图片放置">
+          <button id="customTextBtn">使用自定义文字</button>
+        </div>
+        <div class="vocab-meta"><span id="vocabCount">0 个词条</span><span>全部展示，可搜索</span></div>
+        <div id="vocabList" class="vocab-list"></div>
+        <p class="hint">点击词条的“中 / FR / 双语”，再点击图片位置放置。双语会自动换行。</p>
+        <div class="analysis-box">
+          <div class="panel-title"><span>摩洛哥股票分析</span><span>官方数据</span></div>
+          <input id="stockSearch" placeholder="股票代码，如 GTM / LHM / ATW">
+          <select id="stockSelect"></select>
+          <button id="loadStockBtn" class="primary">抓取股票数据</button>
+          <div id="stockDataBox" class="data-card">请通过启动器打开工具，或先启动本地数据服务。</div>
+          <div class="market-chart">
+            <div class="chart-toolbar">
+              <span id="chartTitle">延迟K线：请选择股票</span>
+              <button data-chart-interval="W">周线</button>
+              <button data-chart-interval="D">日线</button>
+              <button data-chart-interval="60">60分</button>
+              <button data-chart-interval="15">15分</button>
+              <button data-chart-interval="5">5分</button>
+            </div>
+            <iframe id="delayedChartFrame" title="摩洛哥股票延迟K线" loading="lazy"></iframe>
+            <div class="chart-note">K线图使用 CSEMA 行情源，通常为延迟行情；保存截图时必须选择“当前标签页”，不要选择整个屏幕。</div>
+          </div>
+          <div class="analysis-actions">
+            <button id="autoTechBtn" class="secondary">读取图上划线</button>
+            <button id="clearTechBtn">清空技术面</button>
+          </div>
+          <div class="tech-chips" aria-label="常用技术面模板">
+            <button data-tech-preset="震荡整理，支撑有效，阻力区附近减持。">震荡整理</button>
+            <button data-tech-preset="价格靠近支撑区，量能温和，适合低位分批建仓。">靠近支撑</button>
+            <button data-tech-preset="价格靠近阻力区，成交量不足，不追买，优先减持。">靠近阻力</button>
+            <button data-tech-preset="跌破支撑区，结构转弱，暂停新增并降低仓位。">跌破支撑</button>
+            <button data-tech-preset="价格站上阻力区，结构转强，已有仓位继续持有。">突破阻力</button>
+            <button data-tech-preset="成交量不足，价格推进缺少资金确认，仓位不宜提高。">量能不足</button>
+            <button data-tech-preset="周线重点参考24周均线，价格站上并守稳则中期结构改善。">24周均线</button>
+            <button data-tech-preset="56周均线作为长期趋势分界，价格位于其下方时不宜提高仓位。">56周均线</button>
+          </div>
+          <textarea id="technicalSummary" placeholder="可选补充价位，例如：支撑663dh，压力708dh，量能不足。也可以直接点上方按钮自动识别。"></textarea>
+          <div class="holding-box">
+            <div class="panel-title"><span>持仓信息</span><button id="clearHoldingBtn">清空</button></div>
+            <input id="clientName" placeholder="账户名称 / 备注">
+            <div class="holding-grid">
+              <input id="holdingQty" type="number" min="0" step="1" placeholder="持仓股数">
+              <input id="holdingCost" type="number" min="0" step="0.01" placeholder="成本价 MAD">
+              <input id="holdingWeight" type="number" min="0" max="100" step="0.1" placeholder="仓位占比 %">
+              <select id="investmentHorizon">
+                <option value="">投资周期</option>
+                <option value="中期">中期</option>
+                <option value="中长期">中长期</option>
+                <option value="长期">长期</option>
+              </select>
+              <select id="riskProfile">
+                <option value="">风险偏好</option>
+                <option value="稳健">稳健</option>
+                <option value="平衡">平衡</option>
+                <option value="积极">积极</option>
+              </select>
+            </div>
+            <textarea id="holdingNote" placeholder="持仓备注，例如：已重仓 / 希望长期持有 / 不能承受大幅回撤"></textarea>
+          </div>
+          <textarea id="analysisTemplate" placeholder="可粘贴你的分析模板；为空则使用默认 Youssef 团队模板。"></textarea>
+          <div class="report-actions">
+            <button id="generateReportBtn" class="primary">生成并复制报告</button>
+            <button id="copyReportBtn">复制报告</button>
+            <button id="clearReportBtn">清空报告</button>
+          </div>
+          <div class="section-note">生成后会自动复制到剪贴板；如果浏览器限制剪贴板，再点一次复制报告。</div>
+          <textarea id="stockReport" placeholder="这里生成真实数据 + 技术面一致的中文报告"></textarea>
+        </div>
+      </aside>
+    </main>
+
+    <footer>
+      <span id="statusText">就绪</span>
+      <span>手动标注模式，不上传截图。</span>
+    </footer>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const imageCanvas = $('imageCanvas');
+    const overlayCanvas = $('overlayCanvas');
+    const chartOverlayCanvas = $('chartOverlayCanvas');
+    const imageCtx = imageCanvas.getContext('2d');
+    const overlayCtx = overlayCanvas.getContext('2d');
+    const chartOverlayCtx = chartOverlayCanvas.getContext('2d');
+    const stage = $('stage');
+    const empty = $('empty');
+    const toolLabels = { trend: '趋势线', arrow: '箭头', hline: '水平线', box: '箱体', text: '文字', erase: '擦除' };
+    const terms = [
+      ['上升趋势', 'Tendance haussière'],
+      ['下降趋势', 'Tendance baissière'],
+      ['横盘整理', 'Consolidation latérale'],
+      ['区间整理', 'Range de consolidation'],
+      ['震荡偏弱', 'Consolidation avec biais baissier'],
+      ['震荡偏强', 'Consolidation avec biais haussier'],
+      ['趋势改善', 'Amélioration de la tendance'],
+      ['趋势转弱', 'Affaiblissement de la tendance'],
+      ['技术性反弹', 'Rebond technique'],
+      ['反弹乏力', 'Rebond peu soutenu'],
+      ['低位企稳', 'Stabilisation en bas de range'],
+      ['阻力区承压', 'Blocage sous zone de résistance'],
+
+      ['支撑区', 'Zone de support'],
+      ['支撑位', 'Niveau de support'],
+      ['主要支撑', 'Support majeur'],
+      ['次要支撑', 'Support secondaire'],
+      ['动态支撑', 'Support dynamique'],
+      ['前低支撑', 'Support sur ancien plus bas'],
+      ['区间下沿支撑', 'Support sur borne basse du range'],
+      ['均线支撑', 'Support sur moyenne mobile'],
+      ['支撑失效', 'Invalidation du support'],
+      ['跌破支撑', 'Rupture du support'],
+      ['回踩支撑', 'Test du support'],
+      ['支撑确认', 'Support confirmé'],
+
+      ['阻力区', 'Zone de résistance'],
+      ['阻力位', 'Niveau de résistance'],
+      ['压力位', 'Niveau de résistance'],
+      ['主要阻力', 'Résistance majeure'],
+      ['次要阻力', 'Résistance secondaire'],
+      ['动态阻力', 'Résistance dynamique'],
+      ['前高阻力', 'Résistance sur ancien plus haut'],
+      ['区间上沿阻力', 'Résistance sur borne haute du range'],
+      ['均线阻力', 'Résistance sur moyenne mobile'],
+      ['反抽阻力', 'Pullback sous résistance'],
+      ['突破阻力', 'Cassure de la résistance'],
+      ['阻力确认', 'Résistance confirmée'],
+
+      ['关键价位', 'Niveau clé'],
+      ['枢轴位', 'Point pivot'],
+      ['突破位', 'Niveau de cassure'],
+      ['破位点', 'Point de rupture'],
+      ['回踩位', 'Niveau de pullback'],
+      ['保护位', 'Niveau de protection'],
+      ['减持区', 'Zone d’allègement'],
+      ['目标价位', 'Objectif de cours'],
+      ['颈线位', 'Ligne de cou'],
+      ['缺口位', 'Niveau de gap'],
+      ['心理关口', 'Seuil psychologique'],
+
+      ['突破', 'Cassure haussière'],
+      ['跌破', 'Rupture baissière'],
+      ['有效突破', 'Cassure confirmée'],
+      ['有效跌破', 'Rupture baissière confirmée'],
+      ['假突破', 'Fausse cassure'],
+      ['假跌破', 'Fausse rupture baissière'],
+      ['成交量确认突破', 'Cassure confirmée par les volumes'],
+      ['无量突破', 'Cassure sans confirmation des volumes'],
+      ['突破后回踩', 'Pullback après cassure'],
+      ['回踩确认', 'Pullback de confirmation'],
+      ['跌破后反抽', 'Pullback après rupture baissière'],
+      ['收盘站上关键位', 'Clôture au-dessus du niveau clé'],
+      ['关键位失守', 'Perte du niveau clé'],
+
+      ['区间上沿', 'Borne haute du range'],
+      ['区间下沿', 'Borne basse du range'],
+      ['箱体上沿', 'Borne haute du range'],
+      ['箱体下沿', 'Borne basse du range'],
+      ['箱体中轴', 'Milieu du range'],
+      ['整理平台', 'Plateforme de consolidation'],
+      ['收敛整理', 'Consolidation en triangle'],
+      ['横盘消化', 'Consolidation latérale'],
+      ['整理区间', 'Zone de consolidation'],
+      ['观察区', "Zone d'observation"],
+      ['风险区', 'Zone de risque'],
+      ['目标区', 'Zone cible'],
+
+      ['趋势线', 'Ligne de tendance'],
+      ['下降趋势线', 'Ligne de tendance baissière'],
+      ['上升趋势线', 'Ligne de tendance haussière'],
+      ['通道上轨', 'Borne haute du canal'],
+      ['通道下轨', 'Borne basse du canal'],
+      ['低点抬升', 'Creux ascendants'],
+      ['高点下移', 'Sommets descendants'],
+      ['突破前高', 'Franchissement de l’ancien plus haut'],
+      ['跌破前低', 'Rupture de l’ancien plus bas'],
+      ['趋势延续', 'Poursuite de la tendance'],
+      ['趋势反转', 'Renversement de tendance'],
+
+      ['成交量放大', 'Volumes en hausse'],
+      ['成交量萎缩', 'Volumes en baisse'],
+      ['成交量确认', 'Confirmation par les volumes'],
+      ['成交量不足', 'Volumes insuffisants'],
+      ['量价配合', 'Confirmation prix-volumes'],
+      ['量价背离', 'Divergence prix-volumes'],
+      ['买盘增强', 'Renforcement du courant acheteur'],
+      ['卖压增强', 'Pression vendeuse accrue'],
+      ['换手活跃', 'Rotation active des titres'],
+      ['流动性不足', 'Liquidité insuffisante'],
+      ['成交额', 'Volume échangé'],
+      ['成交股数', 'Quantité échangée'],
+
+      ['均线多头排列', 'Alignement haussier des moyennes mobiles'],
+      ['均线空头排列', 'Alignement baissier des moyennes mobiles'],
+      ['站上均线', 'Passage au-dessus de la moyenne mobile'],
+      ['跌破均线', 'Passage sous la moyenne mobile'],
+      ['均线向上', 'Moyenne mobile orientée à la hausse'],
+      ['均线向下', 'Moyenne mobile orientée à la baisse'],
+      ['短期均线', 'Moyenne mobile courte'],
+      ['中期均线', 'Moyenne mobile intermédiaire'],
+      ['长期均线', 'Moyenne mobile longue'],
+      ['24周均线', 'Moyenne mobile sur 24 semaines'],
+      ['56周均线', 'Moyenne mobile sur 56 semaines'],
+      ['站上24周均线', 'Passage au-dessus de la moyenne mobile 24 semaines'],
+      ['跌破56周均线', 'Passage sous la moyenne mobile 56 semaines'],
+
+      ['买方占优', 'Courant acheteur dominant'],
+      ['卖方占优', 'Courant vendeur dominant'],
+      ['等待趋势确认', 'Attendre une confirmation de tendance'],
+      ['避免追高', 'Éviter les achats en extension'],
+      ['控制仓位', 'Maîtrise de l’exposition'],
+      ['降低仓位', 'Allègement de la position'],
+      ['等待企稳', 'Attendre une stabilisation'],
+      ['等待成交量确认', 'Attendre une confirmation par les volumes'],
+      ['分批配置', 'Accumulation progressive'],
+      ['审慎参与', 'Positionnement prudent'],
+      ['中长期配置', 'Allocation moyen-long terme'],
+      ['降低敞口', 'Réduction de l’exposition']
+    ];
+
+    let currentImage = null;
+    let imageDataUrl = '';
+    let imageInfoText = '未导入图片';
+    let shapes = [];
+    let draft = null;
+    let dragText = null;
+    let undoStack = [];
+    let redoStack = [];
+    let chartShapes = [];
+    let chartDraft = null;
+    let chartDragText = null;
+    let chartUndoStack = [];
+    let chartRedoStack = [];
+    let activeTool = 'trend';
+    let activeColor = '#21c985';
+    let lineWidth = 4;
+    let pendingText = '';
+    let stockRows = [];
+    let currentStock = null;
+    let chartInterval = 'D';
+    let workspaceMode = 'chart';
+    let chartDrawing = false;
+    const draftFields = ['stockSearch', 'technicalSummary', 'clientName', 'holdingQty', 'holdingCost', 'holdingWeight', 'investmentHorizon', 'riskProfile', 'holdingNote', 'analysisTemplate', 'stockReport'];
+    const draftKey = 'kline-tech-workbench-draft-v1';
+
+    function setStatus(text) { $('statusText').textContent = text; }
+
+    async function copyText(text, silent = false) {
+      if (!String(text || '').trim()) {
+        if (!silent) setStatus('没有可复制的内容');
+        return false;
+      }
+      try {
+        await navigator.clipboard.writeText(text);
+        if (!silent) setStatus('已复制');
+        return true;
+      } catch (err) {
+        if (!silent) setStatus('浏览器限制复制，请手动选中复制');
+        return false;
+      }
+    }
+
+    function appendTechnicalPreset(text) {
+      const box = $('technicalSummary');
+      const current = box.value.trim();
+      box.value = current ? `${current}\n${text}` : text;
+      box.focus();
+      saveDraft();
+      setStatus('已加入技术面描述');
+    }
+
+    function saveDraft() {
+      const draftData = {};
+      for (const id of draftFields) {
+        const el = $(id);
+        if (el) draftData[id] = el.value || '';
+      }
+      try {
+        localStorage.setItem(draftKey, JSON.stringify(draftData));
+      } catch (err) {
+        // Some browser privacy modes block localStorage; the tool still works without draft persistence.
+      }
+    }
+
+    function restoreDraft() {
+      try {
+        const draftData = JSON.parse(localStorage.getItem(draftKey) || '{}');
+        for (const id of draftFields) {
+          const el = $(id);
+          if (el && draftData[id] !== undefined) el.value = draftData[id];
+        }
+      } catch (err) {
+        localStorage.removeItem(draftKey);
+      }
+    }
+
+    function clearHoldingFields() {
+      ['clientName', 'holdingQty', 'holdingCost', 'holdingWeight', 'investmentHorizon', 'riskProfile', 'holdingNote'].forEach(id => {
+        const el = $(id);
+        if (el) el.value = '';
+      });
+      saveDraft();
+      setStatus('持仓信息已清空');
+    }
+
+    function tradingViewSymbol(symbol) {
+      const clean = String(symbol || '').trim().toUpperCase();
+      return clean ? `CSEMA:${clean}` : '';
+    }
+
+    function tradingViewEmbedUrl(symbol, interval = chartInterval) {
+      const tvSymbol = tradingViewSymbol(symbol);
+      if (!tvSymbol) return '';
+      const params = new URLSearchParams({
+        frameElementId: 'delayedChartFrame',
+        symbol: tvSymbol,
+        interval,
+        hidedetails: '1',
+        hideideas: '1',
+        hidelegend: '0',
+        saveimage: '1',
+        theme: 'light',
+        style: '1',
+        timezone: 'Africa/Casablanca',
+        withdateranges: '1',
+        locale: 'fr',
+        toolbarbg: 'f1f3f6'
+      });
+      params.append('studies', 'Volume@tv-basicstudies');
+      params.append('studies', 'MASimple@tv-basicstudies');
+      params.append('studies', 'MASimple@tv-basicstudies');
+      params.set('studies_overrides', JSON.stringify({
+        'moving average.length': 24,
+        'moving average.linewidth': 2,
+        'moving average.color': '#2563eb'
+      }));
+      return `https://www.tradingview.com/widgetembed/?${params.toString()}`;
+    }
+
+    function loadDelayedChart(symbol = currentStock?.symbol || $('stockSearch')?.value) {
+      const clean = String(symbol || '').trim().toUpperCase();
+      const frames = [$('delayedChartFrame'), $('mainDelayedChartFrame')].filter(Boolean);
+      if (!clean) {
+        $('chartTitle').textContent = '延迟K线：请选择股票';
+        frames.forEach(frame => frame.removeAttribute('src'));
+        return;
+      }
+      const intervalText = chartInterval === 'W' ? '周线' : chartInterval === 'D' ? '日线' : `${chartInterval}分钟`;
+      $('chartTitle').textContent = `延迟K线：${clean} · ${intervalText} · 24周/56周均线`;
+      const url = tradingViewEmbedUrl(clean, chartInterval);
+      frames.forEach(frame => {
+        if (frame.src !== url) frame.src = url;
+      });
+      document.querySelectorAll('[data-chart-interval]').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.chartInterval === chartInterval);
+      });
+    }
+
+    function setWorkspaceMode(mode) {
+      workspaceMode = mode === 'draw' ? 'draw' : 'chart';
+      document.querySelector('.app').classList.toggle('chart-mode', workspaceMode === 'chart');
+      $('chartModeBtn').classList.toggle('active', workspaceMode === 'chart');
+      $('drawModeBtn').classList.toggle('active', workspaceMode === 'draw');
+      if (workspaceMode === 'chart') setChartDrawing(false);
+      $('imageInfo').textContent = workspaceMode === 'chart'
+        ? `K线图模式 · ${($('stockSearch').value || currentStock?.symbol || '未选择股票').toUpperCase()}`
+        : (currentImage ? imageInfoText : '划线标注模式 · 请导入截图');
+      if (workspaceMode === 'chart') loadDelayedChart();
+      setTimeout(resizeChartOverlay, 80);
+      updateModeStateText();
+      setStatus(workspaceMode === 'chart' ? '已切换到K线图模式' : '已切换到划线标注模式');
+    }
+
+    function setChartDrawing(enabled) {
+      chartDrawing = Boolean(enabled);
+      document.querySelector('.app').classList.toggle('chart-drawing', chartDrawing);
+      $('toggleChartDrawBtn').textContent = chartDrawing ? '结束划线' : '开始划线';
+      $('toggleChartDrawBtn').classList.toggle('active', chartDrawing);
+      if (!chartDrawing) {
+        chartDraft = null;
+        chartDragText = null;
+        renderChartOverlay();
+      } else {
+        resizeChartOverlay();
+      }
+      updateModeStateText();
+    }
+
+    function updateModeStateText() {
+      const el = $('modeStateText');
+      if (!el) return;
+      if (workspaceMode === 'draw') {
+        el.textContent = '截图划线';
+      } else {
+        el.textContent = chartDrawing ? 'K线划线中' : '图表可操作';
+      }
+    }
+
+    function toggleChartDrawing() {
+      if (workspaceMode !== 'chart') setWorkspaceMode('chart');
+      setChartDrawing(!chartDrawing);
+      setStatus(chartDrawing ? 'K线划线已开启，图表暂时不能拖动' : 'K线划线已关闭，图表可拖动缩放');
+    }
+
+    function toggleDrawingTools() {
+      const app = document.querySelector('.app');
+      const collapsed = !app.classList.contains('tools-compact');
+      app.classList.toggle('tools-compact', collapsed);
+      $('toggleToolsBtn').textContent = collapsed ? '展开画线' : '收起画线';
+      setStatus(collapsed ? '划线工具已收起' : '划线工具已展开');
+    }
+
+    function cloneShapes(list = shapes) {
+      return list.map(shape => ({ ...shape }));
+    }
+
+    function recordHistory() {
+      undoStack.push(cloneShapes());
+      if (undoStack.length > 80) undoStack.shift();
+      redoStack = [];
+    }
+
+    function restoreShapes(snapshot) {
+      shapes = cloneShapes(snapshot);
+      draft = null;
+      dragText = null;
+      renderOverlay();
+    }
+
+    function undo() {
+      if (workspaceMode === 'chart') {
+        if (!chartUndoStack.length) { setStatus('没有可撤销的操作'); return; }
+        chartRedoStack.push(cloneShapes(chartShapes));
+        chartShapes = cloneShapes(chartUndoStack.pop());
+        chartDraft = null;
+        chartDragText = null;
+        renderChartOverlay();
+        setStatus('已撤销');
+        return;
+      }
+      if (!undoStack.length) { setStatus('没有可撤销的操作'); return; }
+      redoStack.push(cloneShapes());
+      restoreShapes(undoStack.pop());
+      setStatus('已撤销');
+    }
+
+    function redo() {
+      if (workspaceMode === 'chart') {
+        if (!chartRedoStack.length) { setStatus('没有可重做的操作'); return; }
+        chartUndoStack.push(cloneShapes(chartShapes));
+        chartShapes = cloneShapes(chartRedoStack.pop());
+        chartDraft = null;
+        chartDragText = null;
+        renderChartOverlay();
+        setStatus('已重做');
+        return;
+      }
+      if (!redoStack.length) { setStatus('没有可重做的操作'); return; }
+      undoStack.push(cloneShapes());
+      restoreShapes(redoStack.pop());
+      setStatus('已重做');
+    }
+
+    function removeLastShape() {
+      const isChart = workspaceMode === 'chart';
+      const list = isChart ? chartShapes : shapes;
+      if (!list.length) { setStatus('没有可删除的标注'); return; }
+      if (isChart) {
+        chartUndoStack.push(cloneShapes(chartShapes));
+        chartRedoStack = [];
+        chartShapes.pop();
+        renderChartOverlay();
+      } else {
+        recordHistory();
+        shapes.pop();
+        renderOverlay();
+      }
+      setStatus('已删除最后一条标注');
+    }
+
+    function cancelCurrentAction() {
+      draft = null;
+      dragText = null;
+      chartDraft = null;
+      chartDragText = null;
+      pendingText = '';
+      renderOverlay();
+      renderChartOverlay();
+      setStatus('已取消当前操作');
+    }
+
+    function resizeCanvases(w, h) {
+      imageCanvas.width = w;
+      imageCanvas.height = h;
+      overlayCanvas.width = w;
+      overlayCanvas.height = h;
+      stage.style.aspectRatio = `${w} / ${h}`;
+    }
+
+    function resizeChartOverlay() {
+      const rect = chartOverlayCanvas.getBoundingClientRect();
+      const w = Math.max(1, Math.round(rect.width));
+      const h = Math.max(1, Math.round(rect.height));
+      if (chartOverlayCanvas.width !== w || chartOverlayCanvas.height !== h) {
+        chartOverlayCanvas.width = w;
+        chartOverlayCanvas.height = h;
+      }
+      renderChartOverlay();
+    }
+
+    function renderImage() {
+      imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+      if (currentImage) imageCtx.drawImage(currentImage, 0, 0, imageCanvas.width, imageCanvas.height);
+      renderOverlay();
+    }
+
+    function renderOverlay() {
+      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      for (const shape of shapes) drawShape(shape, false, overlayCtx, overlayCanvas);
+      if (draft) drawShape(draft, true, overlayCtx, overlayCanvas);
+    }
+
+    function renderChartOverlay() {
+      chartOverlayCtx.clearRect(0, 0, chartOverlayCanvas.width, chartOverlayCanvas.height);
+      for (const shape of chartShapes) drawShape(shape, false, chartOverlayCtx, chartOverlayCanvas);
+      if (chartDraft) drawShape(chartDraft, true, chartOverlayCtx, chartOverlayCanvas);
+    }
+
+    function drawShape(shape, isDraft = false, ctx = overlayCtx, canvas = overlayCanvas) {
+      ctx.save();
+      ctx.strokeStyle = shape.color;
+      ctx.fillStyle = shape.color;
+      ctx.lineWidth = shape.width;
+      ctx.lineCap = 'round';
+      ctx.lineJoin = 'round';
+      if (isDraft) ctx.globalAlpha = .7;
+
+      if (shape.type === 'arrow') {
+        drawTaperedArrow(shape, ctx);
+      } else if (shape.type === 'trend') {
+        ctx.beginPath();
+        ctx.moveTo(shape.x1, shape.y1);
+        ctx.lineTo(shape.x2, shape.y2);
+        ctx.stroke();
+      }
+      if (shape.type === 'hline') {
+        ctx.beginPath();
+        ctx.moveTo(0, shape.y1);
+        ctx.lineTo(canvas.width, shape.y1);
+        ctx.stroke();
+      }
+      if (shape.type === 'box') {
+        const x = Math.min(shape.x1, shape.x2);
+        const y = Math.min(shape.y1, shape.y2);
+        const w = Math.abs(shape.x2 - shape.x1);
+        const h = Math.abs(shape.y2 - shape.y1);
+        ctx.strokeRect(x, y, w, h);
+        ctx.globalAlpha = .08;
+        ctx.fillRect(x, y, w, h);
+      }
+      if (shape.type === 'text') {
+        const fontSize = Math.max(14, shape.width * 5);
+        ctx.font = `700 ${fontSize}px "Microsoft YaHei", sans-serif`;
+        String(shape.text || '').split('\n').forEach((line, index) => {
+          ctx.fillText(line, shape.x1, shape.y1 + index * (fontSize + 5));
+        });
+      }
+      ctx.restore();
+    }
+
+    function drawTaperedArrow(shape, ctx = overlayCtx) {
+      const dx = shape.x2 - shape.x1;
+      const dy = shape.y2 - shape.y1;
+      const length = Math.hypot(dx, dy);
+      if (length < 2) return;
+      const ux = dx / length;
+      const uy = dy / length;
+      const nx = -uy;
+      const ny = ux;
+      const baseWidth = Math.max(1.6, shape.width * .55);
+      const shaftEndWidth = Math.max(5, shape.width * 1.8);
+      const headLength = Math.min(Math.max(22, shape.width * 7), length * .42);
+      const headWidth = Math.max(14, shape.width * 4.6);
+      const neckX = shape.x2 - ux * headLength;
+      const neckY = shape.y2 - uy * headLength;
+
+      ctx.beginPath();
+      ctx.moveTo(shape.x1 + nx * baseWidth / 2, shape.y1 + ny * baseWidth / 2);
+      ctx.lineTo(neckX + nx * shaftEndWidth / 2, neckY + ny * shaftEndWidth / 2);
+      ctx.lineTo(neckX + nx * headWidth / 2, neckY + ny * headWidth / 2);
+      ctx.lineTo(shape.x2, shape.y2);
+      ctx.lineTo(neckX - nx * headWidth / 2, neckY - ny * headWidth / 2);
+      ctx.lineTo(neckX - nx * shaftEndWidth / 2, neckY - ny * shaftEndWidth / 2);
+      ctx.lineTo(shape.x1 - nx * baseWidth / 2, shape.y1 - ny * baseWidth / 2);
+      ctx.closePath();
+      ctx.fill();
+    }
+
+    function point(event, canvas = overlayCanvas) {
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: (event.clientX - rect.left) * canvas.width / rect.width,
+        y: (event.clientY - rect.top) * canvas.height / rect.height
+      };
+    }
+
+    function distanceToSegment(px, py, x1, y1, x2, y2) {
+      const dx = x2 - x1, dy = y2 - y1, len2 = dx * dx + dy * dy;
+      if (!len2) return Math.hypot(px - x1, py - y1);
+      const t = Math.max(0, Math.min(1, ((px - x1) * dx + (py - y1) * dy) / len2));
+      return Math.hypot(px - (x1 + t * dx), py - (y1 + t * dy));
+    }
+
+    function hit(shape, p) {
+      const tolerance = Math.max(14, shape.width * 4);
+      if (shape.type === 'trend' || shape.type === 'arrow') return distanceToSegment(p.x, p.y, shape.x1, shape.y1, shape.x2, shape.y2) <= tolerance;
+      if (shape.type === 'hline') return Math.abs(p.y - shape.y1) <= tolerance;
+      if (shape.type === 'text') {
+        const fontSize = Math.max(14, shape.width * 5);
+        const lines = String(shape.text || '').split('\n');
+        const maxChars = Math.max(...lines.map(line => line.length), 1);
+        const width = Math.max(48, maxChars * fontSize * .62);
+        const height = lines.length * (fontSize + 5);
+        return p.x >= shape.x1 - tolerance
+          && p.x <= shape.x1 + width + tolerance
+          && p.y >= shape.y1 - fontSize - tolerance
+          && p.y <= shape.y1 + height + tolerance;
+      }
+      if (shape.type === 'box') {
+        const x1 = Math.min(shape.x1, shape.x2), x2 = Math.max(shape.x1, shape.x2);
+        const y1 = Math.min(shape.y1, shape.y2), y2 = Math.max(shape.y1, shape.y2);
+        const onEdge = Math.abs(p.x - x1) <= tolerance || Math.abs(p.x - x2) <= tolerance || Math.abs(p.y - y1) <= tolerance || Math.abs(p.y - y2) <= tolerance;
+        return p.x >= x1 - tolerance && p.x <= x2 + tolerance && p.y >= y1 - tolerance && p.y <= y2 + tolerance && onEdge;
+      }
+      return false;
+    }
+
+    function setTool(tool) {
+      if (workspaceMode === 'chart') {
+        setChartDrawing(true);
+      } else if (workspaceMode !== 'draw') {
+        setWorkspaceMode('draw');
+      }
+      activeTool = tool;
+      document.querySelectorAll('[data-tool]').forEach(btn => btn.classList.toggle('active', btn.dataset.tool === tool));
+      $('toolName').textContent = toolLabels[tool];
+    }
+
+    function editTextShape(shape) {
+      if (!shape || shape.type !== 'text') return;
+      const next = prompt('修改标注文字', shape.text || '');
+      if (next === null) return;
+      if (workspaceMode === 'chart') {
+        chartUndoStack.push(cloneShapes(chartShapes));
+        chartRedoStack = [];
+      } else {
+        recordHistory();
+      }
+      shape.text = next.trim() || shape.text;
+      renderOverlay();
+      renderChartOverlay();
+      setStatus('文字已更新');
+    }
+
+    function widthLabel(value) {
+      if (value <= 2) return '细';
+      if (value >= 7) return '粗';
+      return '中';
+    }
+
+    function setLineWidth(value) {
+      lineWidth = Number(value) || 4;
+      $('lineWidthText').textContent = widthLabel(lineWidth);
+      document.querySelectorAll('[data-width]').forEach(btn => {
+        btn.classList.toggle('active', Number(btn.dataset.width) === lineWidth);
+      });
+      setStatus(`线宽已切换为${widthLabel(lineWidth)}`);
+    }
+
+    function loadImageData(dataUrl, label = '粘贴截图') {
+      const img = new Image();
+      img.onload = () => {
+        currentImage = img;
+        imageDataUrl = dataUrl;
+        shapes = [];
+        undoStack = [];
+        redoStack = [];
+        resizeCanvases(img.naturalWidth, img.naturalHeight);
+        empty.style.display = 'none';
+        renderImage();
+        imageInfoText = `${label} · ${img.naturalWidth}×${img.naturalHeight}`;
+        $('imageInfo').textContent = imageInfoText;
+        setWorkspaceMode('draw');
+        setStatus('图片已导入');
+      };
+      img.onerror = () => setStatus('图片读取失败，请换一张截图');
+      img.src = dataUrl;
+    }
+
+    function readFile(file) {
+      if (!file || !file.type?.startsWith('image/')) return;
+      const reader = new FileReader();
+      reader.onload = () => {
+        loadImageData(reader.result, file.name);
+      };
+      reader.readAsDataURL(file);
+    }
+
+    async function readClipboardImage(event) {
+      const items = Array.from(event.clipboardData?.items || []);
+      const imageItem = items.find(item => item.type.startsWith('image/'));
+      if (!imageItem) return;
+      event.preventDefault();
+      const file = imageItem.getAsFile();
+      if (file) readFile(file);
+    }
+
+    async function loadClipboardImageFromButton() {
+      try {
+        const items = await navigator.clipboard.read();
+        for (const item of items) {
+          const type = item.types.find(t => t.startsWith('image/'));
+          if (!type) continue;
+          const blob = await item.getType(type);
+          const reader = new FileReader();
+          reader.onload = () => loadImageData(reader.result, '剪贴板截图');
+          reader.readAsDataURL(blob);
+          return;
+        }
+        setStatus('剪贴板里没有图片');
+      } catch {
+        setStatus('请按 Ctrl+V 直接粘贴截图');
+      }
+    }
+
+    function saveImage() {
+      if (workspaceMode === 'chart') {
+        saveChartScreenshot();
+        return;
+      }
+      if (!currentImage) { setStatus('请先导入图片'); return; }
+      const out = document.createElement('canvas');
+      out.width = imageCanvas.width;
+      out.height = imageCanvas.height;
+      const ctx = out.getContext('2d');
+      ctx.drawImage(imageCanvas, 0, 0);
+      ctx.drawImage(overlayCanvas, 0, 0);
+      const a = document.createElement('a');
+      a.href = out.toDataURL('image/png');
+      const symbol = (currentStock?.symbol || $('stockSearch')?.value || 'chart').trim().toUpperCase() || 'chart';
+      a.download = `${symbol}-technical-markup-${new Date().toISOString().slice(0, 10)}.png`;
+      a.click();
+      setStatus('图片已保存');
+    }
+
+    async function saveChartScreenshot() {
+      if (!navigator.mediaDevices?.getDisplayMedia) {
+        setStatus('当前浏览器不支持一键截图，请使用系统截图工具');
+        return;
+      }
+      setStatus('截图时请选择“当前标签页”，不要选整个屏幕');
+      let stream;
+      try {
+        resizeChartOverlay();
+        stream = await navigator.mediaDevices.getDisplayMedia({
+          video: {
+            displaySurface: 'browser'
+          },
+          audio: false,
+          preferCurrentTab: true,
+          selfBrowserSurface: 'include',
+          surfaceSwitching: 'exclude'
+        });
+        const track = stream.getVideoTracks()[0];
+        const settings = track?.getSettings?.() || {};
+        if (settings.displaySurface && settings.displaySurface !== 'browser') {
+          throw new Error('请选择当前标签页，不要选择整个屏幕或窗口。');
+        }
+        const video = document.createElement('video');
+        video.srcObject = stream;
+        await video.play();
+        await new Promise(resolve => {
+          if (video.videoWidth) resolve();
+          else video.onloadedmetadata = resolve;
+        });
+        const rect = $('chartStage').getBoundingClientRect();
+        const scaleX = video.videoWidth / window.innerWidth;
+        const scaleY = video.videoHeight / window.innerHeight;
+        if (Math.abs(scaleX - scaleY) > 0.08 || scaleX < 0.5 || scaleY < 0.5) {
+          throw new Error('截图源不是当前标签页，请重新选择当前标签页。');
+        }
+        const out = document.createElement('canvas');
+        out.width = Math.max(1, Math.round(rect.width * scaleX));
+        out.height = Math.max(1, Math.round(rect.height * scaleY));
+        const ctx = out.getContext('2d');
+        ctx.drawImage(
+          video,
+          Math.max(0, Math.round(rect.left * scaleX)),
+          Math.max(0, Math.round(rect.top * scaleY)),
+          out.width,
+          out.height,
+          0,
+          0,
+          out.width,
+          out.height
+        );
+        const a = document.createElement('a');
+        const symbol = (currentStock?.symbol || $('stockSearch')?.value || 'chart').trim().toUpperCase() || 'chart';
+        a.href = out.toDataURL('image/png');
+        a.download = `${symbol}-kline-screenshot-${new Date().toISOString().slice(0, 10)}.png`;
+        a.click();
+        setStatus('K线截图已保存');
+      } catch (err) {
+        setStatus(err.message || '截图取消或失败，请选择当前标签页');
+      } finally {
+        if (stream) stream.getTracks().forEach(track => track.stop());
+      }
+    }
+
+    function clearAll() {
+      if (workspaceMode === 'chart') {
+        if (!chartShapes.length) { setStatus('没有可清空的K线标注'); return; }
+        if (!confirm('确认清空当前K线图上的所有标注？')) return;
+        chartUndoStack.push(cloneShapes(chartShapes));
+        chartRedoStack = [];
+        chartShapes = [];
+        chartDraft = null;
+        chartDragText = null;
+        renderChartOverlay();
+        setStatus('K线标注已清空');
+        return;
+      }
+      if (!shapes.length) { setStatus('没有可清空的标注'); return; }
+      if (!confirm('确认清空当前所有标注？')) return;
+      recordHistory();
+      shapes = [];
+      draft = null;
+      dragText = null;
+      renderOverlay();
+      setStatus('标注已清空');
+    }
+
+    function newProject() {
+      if ((currentImage || shapes.length) && !confirm('确认新建？当前图片和标注会被清空。')) return;
+      currentImage = null;
+      imageDataUrl = '';
+      imageInfoText = '未导入图片';
+      shapes = [];
+      draft = null;
+      dragText = null;
+      undoStack = [];
+      redoStack = [];
+      imageCtx.clearRect(0, 0, imageCanvas.width, imageCanvas.height);
+      overlayCtx.clearRect(0, 0, overlayCanvas.width, overlayCanvas.height);
+      empty.style.display = 'grid';
+      $('imageInfo').textContent = imageInfoText;
+      setWorkspaceMode('chart');
+      setStatus('已新建');
+    }
+
+    function escapeHtml(text) {
+      return String(text).replace(/[&<>"']/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[ch]));
+    }
+
+    function renderVocab() {
+      const q = $('vocabSearch').value.trim().toLowerCase();
+      const list = terms.filter(([zh, fr]) => `${zh} ${fr}`.toLowerCase().includes(q));
+      $('vocabCount').textContent = q ? `${list.length}/${terms.length} 个词条` : `${terms.length} 个词条`;
+      $('vocabList').innerHTML = list.map(([zh, fr]) => `
+        <div class="vocab-item">
+          <b>${escapeHtml(zh)}</b>
+          <span>${escapeHtml(fr)}</span>
+          <div class="vocab-actions">
+            <button data-text="${escapeHtml(zh)}">中</button>
+            <button data-text="${escapeHtml(fr)}">FR</button>
+            <button data-text="${escapeHtml(`${zh}\n${fr}`)}">双语</button>
+          </div>
+        </div>
+      `).join('');
+    }
+
+    function queueText(text) {
+      pendingText = text;
+      setTool('text');
+      setStatus('点击图片位置放置文字');
+    }
+
+    function fmtNum(value, digits = 2) {
+      if (value === null || value === undefined || value === '') return '-';
+      const n = Number(value);
+      if (!Number.isFinite(n)) return '-';
+      return n.toLocaleString('fr-FR', { maximumFractionDigits: digits, minimumFractionDigits: digits });
+    }
+
+    function fmtCap(value) {
+      const n = Number(value);
+      if (!Number.isFinite(n)) return '-';
+      return `${fmtNum(n / 1000000000, 2)} 亿 MAD`;
+    }
+
+    function sectorNameZh(sector) {
+      const map = {
+        Banques: '银行',
+        Assurances: '保险',
+        'Bâtiment et Matériaux de Construction': '建筑与建材',
+        'Sociétés de financement et Autres Activités Financières': '金融服务',
+        'Agroalimentaire / Production': '食品生产',
+        Télécommunications: '电信',
+        'Distributeurs': '分销零售',
+        'Mines': '矿业',
+        'Immobilier': '房地产',
+        'Participation et promotion immobilières': '房地产投资与开发',
+        'Transport': '运输',
+        'Electricité': '电力',
+        'Pétrole et Gaz': '石油天然气'
+      };
+      return map[sector] || sector || '所属';
+    }
+
+    function sectorDisplay(sector) {
+      if (!sector) return '待确认';
+      const zh = sectorNameZh(sector);
+      return zh && zh !== sector ? `${zh}（${sector}）` : sector;
+    }
+
+    const apiBase = window.location.protocol === 'file:' ? 'http://127.0.0.1:8787' : '';
+    const launcherFile = 'start-morocco-stock-analysis.cmd';
+
+    function connectionHint(err) {
+      const directOpen = window.location.protocol === 'file:'
+        ? '\n当前页面是直接打开的 HTML，股票抓取必须通过启动器打开。'
+        : '';
+      return [
+        '无法连接本地数据服务。',
+        directOpen,
+        `请关闭当前页面，双击 outputs 文件夹里的 ${launcherFile}，再用自动打开的新页面抓取。`,
+        '',
+        `错误：${err.message}`
+      ].filter(Boolean).join('\n');
+    }
+
+    async function fetchJson(path, options = {}) {
+      const retries = options.retries ?? 4;
+      const delay = options.delay ?? 1200;
+      let lastError;
+      for (let attempt = 0; attempt <= retries; attempt += 1) {
+        try {
+          const res = await fetch(`${apiBase}${path}`, { cache: 'no-store' });
+          const json = await res.json();
+          if (!res.ok || !json.ok) throw new Error(json.error || `HTTP ${res.status}`);
+          return json;
+        } catch (err) {
+          lastError = err;
+          if (attempt < retries) await new Promise(resolve => setTimeout(resolve, delay));
+        }
+      }
+      throw lastError;
+    }
+
+    async function loadStocks() {
+      try {
+        $('stockDataBox').textContent = '正在连接本地数据服务并加载摩洛哥股票列表...';
+        const json = await fetchJson('/api/stocks', { retries: 6, delay: 1500 });
+        stockRows = json.data || [];
+        $('stockSelect').innerHTML = stockRows.map(row => `<option value="${row.symbol}">${row.symbol}${row.name ? ` - ${row.name}` : ''}</option>`).join('');
+        const restored = $('stockSearch').value.trim().toUpperCase();
+        if (restored && stockRows.some(row => row.symbol === restored)) $('stockSelect').value = restored;
+        $('stockDataBox').textContent = `已加载 ${json.count} 只股票。\n更新时间：${json.updatedAt}`;
+        setStatus('摩洛哥股票列表已加载');
+      } catch (err) {
+        $('stockDataBox').textContent = connectionHint(err);
+      }
+    }
+
+    async function loadSelectedStock() {
+      const typed = $('stockSearch').value.trim().toUpperCase();
+      const symbol = typed || $('stockSelect').value;
+      if (!symbol) return;
+      const button = $('loadStockBtn');
+      try {
+        button.disabled = true;
+        button.textContent = '抓取中...';
+        $('stockDataBox').textContent = '正在抓取官方行情数据...';
+        const json = await fetchJson(`/api/stock/${encodeURIComponent(symbol)}`, { retries: 2, delay: 1000 });
+        currentStock = json.data;
+        $('stockSearch').value = currentStock.symbol;
+        if ([...$('stockSelect').options].some(option => option.value === currentStock.symbol)) $('stockSelect').value = currentStock.symbol;
+        saveDraft();
+        $('stockDataBox').textContent = renderStockData(currentStock, json.updatedAt);
+        loadDelayedChart(currentStock.symbol);
+        setStatus(`${currentStock.symbol} 数据已更新`);
+      } catch (err) {
+        $('stockDataBox').textContent = connectionHint(err);
+      } finally {
+        button.disabled = false;
+        button.textContent = '抓取股票数据';
+      }
+    }
+
+    function renderStockData(s, updatedAt) {
+      return [
+        `代码：${s.symbol}`,
+        `名称：${s.name || '-'}`,
+        `板块：${sectorDisplay(s.sector)}`,
+        `ISIN：${s.isin || '-'}`,
+        `价格：${fmtNum(s.price)} MAD`,
+        `涨跌幅：${fmtNum(s.changePct)}%`,
+        `日内区间：${fmtNum(s.low)} - ${fmtNum(s.high)} MAD`,
+        `成交额：${fmtNum(s.volumeMAD, 0)} MAD`,
+        `成交股数：${fmtNum(s.tradedShares, 0)}`,
+        `市值：${fmtCap(s.marketCap)}`,
+        `市值排名：${s.marketCapRank ? `第 ${s.marketCapRank}/${s.marketCapRankTotal}` : '-'}`,
+        `总股本：${fmtNum(s.shares, 0)}`,
+        `上市价：${fmtNum(s.introPrice)} MAD`,
+        `数据时间：${s.timestamp || updatedAt}`
+      ].join('\n');
+    }
+
+    function ordinalZh(n) {
+      const map = { 1: '第一', 2: '第二', 3: '第三', 4: '第四', 5: '第五', 6: '第六', 7: '第七', 8: '第八', 9: '第九', 10: '第十' };
+      return map[n] || `第 ${n}`;
+    }
+
+    function industryPosition(s) {
+      if (!s.marketCapRank || !s.marketCapRankTotal) {
+        return `${sectorNameZh(s.sector)}板块上市公司，市值排名待确认。`;
+      }
+      const leader = s.marketCapRank <= 3 ? '龙头企业' : s.marketCapRank <= 10 ? '头部企业' : '主要上市企业';
+      return `${sectorNameZh(s.sector)}板块${leader}，市值排名${ordinalZh(s.marketCapRank)}。`;
+    }
+
+    function activeAnnotationShapes() {
+      return workspaceMode === 'chart' ? chartShapes : shapes;
+    }
+
+    function activeAnnotationCanvas() {
+      return workspaceMode === 'chart' ? chartOverlayCanvas : overlayCanvas;
+    }
+
+    function allAnnotationText() {
+      return activeAnnotationShapes()
+        .filter(shape => shape.type === 'text' && shape.text)
+        .map(shape => String(shape.text))
+        .join('\n');
+    }
+
+    function extractLevels(text) {
+      const levels = { support: [], resistance: [], other: [] };
+      const cleaned = String(text || '').replace(/[,，]/g, '.');
+      const re = /(.{0,8}?)(\d+(?:\.\d+)?)(?:\s*(?:dh|mad|MAD|DH))?(.{0,8}?)/g;
+      let match;
+      while ((match = re.exec(cleaned))) {
+        const value = Number(match[2]);
+        if (!Number.isFinite(value) || value < 1) continue;
+        const ctx = `${match[1]}${match[3]}`;
+        const item = fmtNum(value, value % 1 ? 2 : 0);
+        if (/支撑|下沿|防守|support/i.test(ctx)) levels.support.push(item);
+        else if (/压力|阻力|上沿|突破|resistance/i.test(ctx)) levels.resistance.push(item);
+        else levels.other.push(item);
+      }
+      for (const key of Object.keys(levels)) levels[key] = [...new Set(levels[key])];
+      return levels;
+    }
+
+    function uniqueNumbers(values) {
+      return [...new Set(values.filter(value => Number.isFinite(value) && value > 0).map(value => Number(value.toFixed(2))))];
+    }
+
+    function nearestRoundLevel(price, direction) {
+      const n = Number(price);
+      if (!Number.isFinite(n) || n <= 0) return null;
+      const step = n >= 100 ? 10 : 1;
+      return direction === 'up' ? Math.ceil(n / step) * step : Math.floor(n / step) * step;
+    }
+
+    function fallbackLevelsFromStock(s) {
+      const price = Number(s.price);
+      const low = Number(s.low);
+      const high = Number(s.high);
+      const support = uniqueNumbers([
+        low,
+        Number.isFinite(price) ? nearestRoundLevel(price * 0.985, 'down') : null,
+        Number.isFinite(low) ? nearestRoundLevel(low, 'down') : null
+      ]).sort((a, b) => b - a);
+      const resistance = uniqueNumbers([
+        high,
+        Number.isFinite(price) ? nearestRoundLevel(price * 1.015, 'up') : null,
+        Number.isFinite(high) ? nearestRoundLevel(high, 'up') : null
+      ]).sort((a, b) => a - b);
+      return {
+        support: support.slice(0, 3).map(value => fmtNum(value, value % 1 ? 2 : 0)),
+        resistance: resistance.slice(0, 3).map(value => fmtNum(value, value % 1 ? 2 : 0))
+      };
+    }
+
+    function parseFormattedLevel(value) {
+      const n = Number(String(value).replace(/\s/g, '').replace(',', '.'));
+      return Number.isFinite(n) ? n : null;
+    }
+
+    function clusterLevels(values) {
+      const nums = [...new Set(values.map(parseFormattedLevel).filter(value => Number.isFinite(value) && value > 0))]
+        .sort((a, b) => a - b);
+      const clusters = [];
+      for (const value of nums) {
+        const current = clusters[clusters.length - 1];
+        if (!current) {
+          clusters.push([value]);
+          continue;
+        }
+        const avg = current.reduce((sum, item) => sum + item, 0) / current.length;
+        const threshold = Math.max(avg * 0.006, 3);
+        if (Math.abs(value - avg) <= threshold) current.push(value);
+        else clusters.push([value]);
+      }
+      return clusters;
+    }
+
+    function formatLevelCluster(cluster) {
+      const sorted = [...cluster].sort((a, b) => a - b);
+      if (sorted.length === 1) return fmtNum(sorted[0], sorted[0] % 1 ? 2 : 0);
+      const low = sorted[0];
+      const high = sorted[sorted.length - 1];
+      if (Math.abs(high - low) <= 1) {
+        const anchor = Math.round((low + high) / 2);
+        return fmtNum(anchor, 0);
+      }
+      return `${fmtNum(low, low % 1 ? 2 : 0)}–${fmtNum(high, high % 1 ? 2 : 0)}`;
+    }
+
+    function normalizeLevels(values, direction) {
+      const clusters = clusterLevels(values).map(cluster => ({
+        text: formatLevelCluster(cluster),
+        value: cluster.reduce((sum, item) => sum + item, 0) / cluster.length
+      }));
+      clusters.sort((a, b) => direction === 'support' ? b.value - a.value : a.value - b.value);
+      return clusters.slice(0, 1);
+    }
+
+    function positionContext(price, support, resistance) {
+      if (!Number.isFinite(price) || !Number.isFinite(support) || !Number.isFinite(resistance)) {
+        return 'neutral';
+      }
+      if (price < support) return 'belowSupport';
+      if (price > resistance) return 'aboveResistance';
+      const supportGap = (price - support) / price;
+      const resistanceGap = (resistance - price) / price;
+      if (supportGap <= 0.018) return 'nearSupport';
+      if (resistanceGap <= 0.018) return 'nearResistance';
+      return 'midRange';
+    }
+
+    function buildProfessionalView(ctx, s, support, resistance, hasWeakVolume) {
+      const volumeSentence = hasWeakVolume
+        ? '成交量没有跟上价格波动，说明主动买盘并不充分，阻力区下方不宜提高仓位。'
+        : '成交量没有出现明显失衡，价格仍按区间结构处理，仓位围绕关键价位执行。';
+      const views = {
+        nearSupport: {
+          rating: '持有，支撑区确认后分批建仓',
+          technical: `价格贴近 ${support}，这是整理区间里比较重要的承接位置。${volumeSentence}`,
+          logic: `买盘的防守重点在 ${support}，只要该区域没有被收盘跌破，区间结构仍然成立；卖压只有把价格压到该区域下方，才算真正取得优势。`,
+          action: `已有仓位维持持有；新增资金只在 ${support} 附近分批建仓，区间中部和阻力区附近不追买。`,
+          risk: `收盘跌破 ${support}，支撑失效，停止新增买入并降低仓位。`
+        },
+        nearResistance: {
+          rating: '减持，不追买',
+          technical: `价格靠近 ${resistance}，这里是当前最直接的抛压区域。${volumeSentence}`,
+          logic: `买盘要改变结构，必须把价格稳定推到 ${resistance} 上方；在此之前，卖压更容易借该区域兑现筹码。`,
+          action: `已有仓位在 ${resistance} 附近分批减持，未持仓资金不追买；收盘没有站稳该区域前，不做增持。`,
+          risk: `价格在 ${resistance} 下方受压回落，阻力区继续有效，仓位保持保守。`
+        },
+        midRange: {
+          rating: '持有，不新增',
+          technical: `价格处在 ${support} 与 ${resistance} 之间，既没有靠近低吸位置，也没有完成向上突破。${volumeSentence}`,
+          logic: `买盘更有价值的位置在 ${support}，卖压主要集中在 ${resistance}；当前价位的收益风险比一般。`,
+          action: `已有仓位维持持有，不新增；价格回到 ${support} 附近再分批建仓，接近 ${resistance} 时降低仓位。`,
+          risk: `跌破 ${support} 直接降低仓位；突破 ${resistance} 但成交不足，不按有效转强处理。`
+        },
+        aboveResistance: {
+          rating: hasWeakVolume ? '持有，不增持' : '持有，站稳后小幅增持',
+          technical: `价格已运行到 ${resistance} 上方，结构比前期改善，重点在于该区域能否完成阻力转支撑。${volumeSentence}`,
+          logic: `${resistance} 若转化为新的支撑，买盘将重新取得主动；若价格跌回该区域下方，说明突破质量不足。`,
+          action: hasWeakVolume
+            ? `已有仓位继续持有，但不新增；价格连续站稳 ${resistance} 且成交改善后，再恢复增持计划。`
+            : `已有仓位继续持有；价格站稳 ${resistance} 后小幅增持，仓位提升分批执行。`,
+          risk: `重新跌回 ${resistance} 下方，视为突破失败，撤回新增仓位。`
+        },
+        belowSupport: {
+          rating: '减持，暂停新增',
+          technical: `价格跌破 ${support}，原有整理结构已经转弱。${volumeSentence}`,
+          logic: `买盘失去关键防守位后，资金会转向谨慎；在价格重新站回 ${support} 以前，卖方占据主动。`,
+          action: `暂停新增买入，已有仓位先降低敞口；价格重新站回 ${support} 上方之前，不恢复建仓。`,
+          risk: `跌破后若成交继续放大，说明卖压增强，应继续压低仓位。`
+        }
+      };
+      return views[ctx] || views.midRange;
+    }
+
+    function readHoldingInfo(s) {
+      const qty = Number($('holdingQty')?.value || 0);
+      const cost = Number($('holdingCost')?.value || 0);
+      const weight = Number($('holdingWeight')?.value || 0);
+      const price = Number(s.price);
+      const hasPosition = (Number.isFinite(qty) && qty > 0) || (Number.isFinite(cost) && cost > 0) || (Number.isFinite(weight) && weight > 0);
+      if (!hasPosition) return null;
+      const marketValue = Number.isFinite(qty) && qty > 0 && Number.isFinite(price) ? qty * price : null;
+      const pnlPct = Number.isFinite(cost) && cost > 0 && Number.isFinite(price) ? ((price - cost) / cost) * 100 : null;
+      return {
+        clientName: $('clientName')?.value.trim() || '',
+        qty: Number.isFinite(qty) && qty > 0 ? qty : null,
+        cost: Number.isFinite(cost) && cost > 0 ? cost : null,
+        weight: Number.isFinite(weight) && weight > 0 ? weight : null,
+        horizon: $('investmentHorizon')?.value || '',
+        riskProfile: $('riskProfile')?.value || '',
+        note: $('holdingNote')?.value.trim() || '',
+        marketValue,
+        pnlPct
+      };
+    }
+
+    function holdingSummary(h) {
+      if (!h) return '';
+      const lines = [];
+      lines.push(`股票代码：${currentStock?.symbol || '-'}`);
+      if (h.qty) lines.push(`持仓数量：${fmtNum(h.qty, 0)} 股`);
+      if (h.cost) lines.push(`买入价格：${fmtNum(h.cost)} MAD`);
+      if (h.pnlPct !== null) lines.push(`收益/亏损：${fmtNum(h.pnlPct, 2)}%`);
+      return lines.join('\n');
+    }
+
+    function clientPositionAdvice(h, analysis) {
+      if (!h) return '';
+      const pnl = h.pnlPct;
+      const highWeight = h.weight !== null && h.weight >= 20;
+      const lowWeight = h.weight !== null && h.weight > 0 && h.weight <= 8;
+      const conservative = h.riskProfile === '稳健';
+      if (analysis.position === 'belowSupport') {
+        return `当前动作：减持。价格已经跌破 ${analysis.primarySupport}，持仓风险高于收益修复空间，先降低敞口；价格重新站回支撑区之前，不恢复仓位。`;
+      }
+      if (analysis.position === 'nearResistance' && pnl !== null && pnl >= 0) {
+        return `当前动作：分批减持。持仓已有浮盈或接近成本修复，价格又靠近 ${analysis.primaryResistance}，先锁定部分收益，不在阻力区附近继续买入。`;
+      }
+      if (pnl !== null && pnl <= -8) {
+        return `当前动作：持有但不追加买入。持仓处于浮亏状态，处理重点是风险边界；价格仍在 ${analysis.primarySupport} 上方时维持仓位，跌破该区域则降低敞口。`;
+      }
+      if (pnl !== null && pnl >= 12) {
+        return `当前动作：保护利润。持仓已有明显收益，接近 ${analysis.primaryResistance} 时分批减持，保留剩余仓位跟随趋势；跌回阻力区下方则继续降低仓位。`;
+      }
+      if (highWeight || conservative) {
+        return `当前动作：持有，不扩大敞口。仓位或风险约束偏高，优先控制回撤；跌破 ${analysis.primarySupport} 降低仓位，站稳 ${analysis.primaryResistance} 前不新增。`;
+      }
+      if (lowWeight) {
+        return `当前动作：低位分批建仓。仓位较轻，买入位置集中在 ${analysis.primarySupport} 附近；若价格直接上冲到 ${analysis.primaryResistance}，停止买入并等待回落。`;
+      }
+      return `当前动作：持有。仓位处于可管理状态，保持现有持仓；只在 ${analysis.primarySupport} 附近分批建仓，靠近 ${analysis.primaryResistance} 时降低新增买入。`;
+    }
+
+    function slope(shape) {
+      if (!shape || shape.x2 === shape.x1) return 0;
+      return (shape.y2 - shape.y1) / (shape.x2 - shape.x1);
+    }
+
+    function annotationStats() {
+      const sourceShapes = activeAnnotationShapes();
+      const validLines = sourceShapes.filter(shape => ['trend', 'arrow', 'hline', 'box'].includes(shape.type));
+      const arrows = sourceShapes.filter(shape => shape.type === 'arrow');
+      const trends = sourceShapes.filter(shape => shape.type === 'trend');
+      const boxes = sourceShapes.filter(shape => shape.type === 'box');
+      const hlines = sourceShapes.filter(shape => shape.type === 'hline');
+      const upArrows = arrows.filter(shape => shape.x2 > shape.x1 && shape.y2 < shape.y1).length;
+      const downArrows = arrows.filter(shape => shape.x2 > shape.x1 && shape.y2 > shape.y1).length;
+      const upTrends = trends.filter(shape => Math.abs(shape.x2 - shape.x1) > 20 && slope(shape) < -0.08).length;
+      const downTrends = trends.filter(shape => Math.abs(shape.x2 - shape.x1) > 20 && slope(shape) > 0.08).length;
+      const mainBox = boxes
+        .map(shape => ({
+          shape,
+          x: Math.min(shape.x1, shape.x2),
+          y: Math.min(shape.y1, shape.y2),
+          w: Math.abs(shape.x2 - shape.x1),
+          h: Math.abs(shape.y2 - shape.y1)
+        }))
+        .sort((a, b) => (b.w * b.h) - (a.w * a.h))[0] || null;
+      const sortedHLines = [...hlines].sort((a, b) => a.y1 - b.y1);
+      return { validLines, arrows, trends, boxes, hlines, upArrows, downArrows, upTrends, downTrends, mainBox, sortedHLines };
+    }
+
+    function inferredTechnicalText() {
+      const stats = annotationStats();
+      const markerText = allAnnotationText();
+      const parts = [];
+
+      if (!stats.validLines.length && !markerText.trim()) {
+        return '';
+      }
+
+      if (stats.mainBox) {
+        const canvas = activeAnnotationCanvas();
+        const boxName = stats.mainBox.y < canvas.height * 0.55 ? '上方箱体压力区' : '下方箱体整理区';
+        parts.push(`图中画出${boxName}，价格主要处于箱体震荡/筹码消化结构，未有效突破箱体前不宜按单边趋势处理。`);
+      }
+
+      if (stats.hlines.length >= 2) {
+        parts.push('图中存在多条水平关键线，上方水平线优先视为压力观察位，下方水平线优先视为支撑/防守位。');
+      } else if (stats.hlines.length === 1) {
+        parts.push('图中画出一条水平关键线，应作为当前结构的核心多空分界位观察。');
+      }
+
+      if (stats.upTrends && stats.downTrends) {
+        parts.push('图中同时存在上升趋势线和下降趋势线，价格处于收敛整理阶段，配置上以区间纪律为主。');
+      } else if (stats.upTrends) {
+        parts.push('图中上升趋势线显示低点有抬升迹象，价格结构进入修复阶段。');
+      } else if (stats.downTrends) {
+        parts.push('图中下降趋势线显示高点下移，上方仍有趋势压制。');
+      }
+
+      if (stats.upArrows && stats.downArrows) {
+        parts.push('图中同时标出向上突破预期和向下回落风险，当前更符合震荡博弈，配置上不宜在区间中部追高。');
+      } else if (stats.upArrows) {
+        parts.push('图中向上箭头表示若价格站回关键压力上方，后续存在反弹延续空间。');
+      } else if (stats.downArrows) {
+        parts.push('图中向下箭头表示若关键位失守，价格存在继续回落风险。');
+      }
+
+      if (markerText.trim()) {
+        parts.push(markerText.trim());
+      }
+
+      return parts.join('\n');
+    }
+
+    function fillTechnicalFromDrawing() {
+      const text = inferredTechnicalText();
+      if (!text) {
+        $('technicalSummary').value = '当前还没有可识别的划线。请先在图上画箱体、水平线、趋势线、箭头或添加价位文字。';
+        setStatus('没有检测到可识别的划线');
+        return;
+      }
+      $('technicalSummary').value = text;
+      saveDraft();
+      setStatus('已根据划线生成技术面');
+    }
+
+    function buildTechnicalAnalysis(s, typedTech) {
+      const inferredText = inferredTechnicalText();
+      const combined = [typedTech, inferredText].filter(Boolean).join('\n');
+      const levels = extractLevels(combined);
+      const stats = annotationStats();
+      const hasRangeWord = /震荡|横盘|箱体|整理|range|consolidation/i.test(combined);
+      const hasWeakVolume = /量能不足|缩量|成交量不足|volume faible|faible volume/i.test(combined);
+      const confirmedBreakout = /已突破|站上|突破阻力|突破压力|有效突破|cassure haussière/i.test(combined);
+      const confirmedBreakdown = /已跌破|跌破支撑|跌破防守|破位|cassure baissière/i.test(combined);
+
+      let trend = '震荡整理';
+      if (/下降|下跌|偏弱|baiss/i.test(combined) || stats.downTrends > stats.upTrends || stats.downArrows > stats.upArrows) trend = '震荡偏弱';
+      if (/上升|反弹|偏强|haussi/i.test(combined) || stats.upTrends > stats.downTrends || stats.upArrows > stats.downArrows) trend = hasRangeWord ? '震荡偏强' : '反弹修复';
+      if (hasRangeWord && Math.abs(stats.upArrows - stats.downArrows) <= 1) trend = '震荡整理';
+      if (confirmedBreakout) trend = '突破转强';
+      if (confirmedBreakdown) trend = '破位转弱';
+
+      const fallbackLevels = fallbackLevelsFromStock(s);
+      const supportClusters = normalizeLevels(levels.support.length ? levels.support : fallbackLevels.support, 'support');
+      const resistanceClusters = normalizeLevels(levels.resistance.length ? levels.resistance : fallbackLevels.resistance, 'resistance');
+      const supportText = supportClusters.length ? `${supportClusters.map(item => item.text).join('、')} MAD` : '关键支撑区';
+      const resistanceText = resistanceClusters.length ? `${resistanceClusters.map(item => item.text).join('、')} MAD` : '关键压力区';
+      const primarySupport = supportClusters[0] ? `${supportClusters[0].text} MAD` : supportText;
+      const primaryResistance = resistanceClusters[0] ? `${resistanceClusters[0].text} MAD` : resistanceText;
+      let position = positionContext(Number(s.price), supportClusters[0]?.value, resistanceClusters[0]?.value);
+      if (confirmedBreakout) position = 'aboveResistance';
+      if (confirmedBreakdown) position = 'belowSupport';
+      const view = buildProfessionalView(position, s, primarySupport, primaryResistance, hasWeakVolume);
+      const structureText = stats.boxes.length
+        ? '价格仍在整理区间内运行，属于阶段性盘整。'
+        : '价格处在支撑区与阻力区之间，暂时没有形成持续上行结构。';
+      const weeklyMaText = '周线层面，24周均线作为中期节奏参考，56周均线作为长期趋势分界；价格未有效站上两条周均线前，不宜把反弹直接视为长期趋势反转。';
+
+      return {
+        trend,
+        position,
+        rating: view.rating,
+        supportText,
+        resistanceText,
+        primarySupport,
+        primaryResistance,
+        paragraph: `${s.symbol} 目前属于${trend}结构。${structureText}支撑区在 ${primarySupport}，阻力区在 ${primaryResistance}。${view.technical}${weeklyMaText}`,
+        logic: view.logic,
+        action: view.action,
+        risk: view.risk,
+        raw: combined
+      };
+    }
+
+    function defaultReportTemplate(s, tech, holding = null) {
+      const analysis = buildTechnicalAnalysis(s, tech);
+      const holdingBlock = holding ? `
+持仓分析报告：
+持仓情况：
+${holdingSummary(holding)}
+
+持仓结论：
+${clientPositionAdvice(holding, analysis)}
+` : '';
+      return `${holdingBlock}${holding ? '\n' : ''}股票代码：${s.symbol}
+所属板块：${sectorDisplay(s.sector)}
+市值：约 ${fmtCap(s.marketCap)}
+行业地位：${industryPosition(s)}
+
+Youssef团队分析结论：
+处理意见：${analysis.rating}。
+${s.symbol} 当前价格约 ${fmtNum(s.price)} MAD，日内区间 ${fmtNum(s.low)}–${fmtNum(s.high)} MAD，成交额约 ${fmtNum(s.volumeMAD, 0)} MAD。按照当前价位和技术结构，操作上以 ${analysis.rating} 为主。
+
+技术判断：
+${analysis.paragraph}
+
+买卖双方逻辑：
+${analysis.logic}
+
+配置建议：
+${analysis.action}
+
+风险控制：
+${analysis.risk}
+
+`;
+    }
+
+    function sanitizeReport(text) {
+      return String(text || '')
+        .replace(/箭头标注显示向上预期\s*\d+\s*处、向下风险\s*\d+\s*处，交易上需要等价格选择方向。?/g, '')
+        .replace(/箭头标注显示[^。]*。?/g, '')
+        .replace(/向上预期\s*\d+\s*处、向下风险\s*\d+\s*处[^。]*。?/g, '')
+        .replace(/标注中已画出\s*\d+\s*个[^。]*。?/g, '')
+        .replace(/缩量反弹则容易回落到区间内。?/g, '')
+        .replace(/以上为基于公开行情数据和用户趋势图标注的技术分析，不构成投资建议。?/g, '')
+        .replace(/以上为基于公开行情数据[^。]*。?/g, '')
+        .replace(/不构成投资建议。?/g, '')
+        .replace(/根据已标注趋势图，?/g, '')
+        .replace(/按照趋势图中的关键区间/g, '按照上述支撑与压力区间')
+        .replace(/当前分析以行情高低点和关键价位为主，重点观察上述具体价位是否被有效突破或跌破。?/g, '')
+        .replace(/方向确认前应以区间交易思路处理。?/g, '')
+        .replace(/第一支撑位|第一支撑/g, '支撑位')
+        .replace(/第一压力位|第一压力/g, '压力位')
+        .replace(/第二压力位|第二压力/g, '压力位')
+        .replace(/短线不适合追高/g, '不适合在压力位附近追高')
+        .replace(/短线仍按区间节奏处理/g, '以仓位管理等待结构改善')
+        .replace(/短线结构/g, '价格结构')
+        .replace(/短线资金/g, '资金')
+        .replace(/短线/g, '')
+        .replace(/不按单边上涨处理/g, '不宜按趋势行情处理')
+        .replace(/操作上以区间交易为主/g, '操作上偏向中长期仓位管理')
+        .replace(/多空逻辑上/g, '买卖双方逻辑')
+        .replace(/操作建议/g, '配置建议')
+        .replace(/区间交易/g, '仓位管理')
+        .replace(/压力位/g, '阻力区')
+        .replace(/支撑位/g, '支撑区')
+        .replace(/追高/g, '追买')
+        .replace(/补仓/g, '分批建仓')
+        .replace(/加仓/g, '增持')
+        .replace(/追加配置/g, '继续买入')
+        .replace(/分批配置/g, '分批建仓')
+        .replace(/提高配置比例/g, '增持')
+        .replace(/恢复配置/g, '重新评估建仓')
+        .replace(/审慎配置/g, '审慎持仓')
+        .replace(/止盈/g, '减持')
+        .replace(/放量突破/g, '在成交量确认下突破')
+        .replace(/放量站上/g, '在成交量确认下站上')
+        .replace(/客户持仓情况/g, '持仓情况')
+        .replace(/客户组合建议/g, '组合建议')
+        .replace(/客户名称/g, '账户名称')
+        .replace(/客户备注/g, '持仓备注')
+        .replace(/客户当前/g, '当前持仓')
+        .replace(/客户已有/g, '持仓已有')
+        .replace(/客户仓位/g, '仓位')
+        .replace(/后续观察[^。]*承压情况。?/g, '')
+        .replace(/图中上方压力区|图中下方水平线附近|图中低位承接区|用户趋势图标注|根据已标注趋势图|标注中已画出/g, '')
+        .replace(/[ \t]+。/g, '。')
+        .replace(/。{2,}/g, '。')
+        .replace(/\n{3,}/g, '\n\n')
+        .trim();
+    }
+
+    async function generateStockReport() {
+      if (!currentStock) {
+        $('stockReport').value = '请先抓取股票数据。';
+        setStatus('请先抓取股票数据');
+        return;
+      }
+      const button = $('generateReportBtn');
+      try {
+        button.disabled = true;
+        button.textContent = '生成中...';
+        const autoTech = inferredTechnicalText();
+        const tech = $('technicalSummary').value.trim() || autoTech;
+        if (!$('technicalSummary').value.trim() && autoTech) $('technicalSummary').value = autoTech;
+        const holding = readHoldingInfo(currentStock);
+        const customTemplate = $('analysisTemplate').value.trim();
+        const base = defaultReportTemplate(currentStock, tech, holding);
+        const analysis = buildTechnicalAnalysis(currentStock, tech);
+        const holdingText = holdingSummary(holding);
+        const clientAdvice = clientPositionAdvice(holding, analysis);
+        if (!customTemplate) {
+          $('stockReport').value = sanitizeReport(base);
+        } else {
+          $('stockReport').value = sanitizeReport(customTemplate
+            .replaceAll('{{股票代码}}', currentStock.symbol)
+            .replaceAll('{{所属板块}}', sectorDisplay(currentStock.sector))
+            .replaceAll('{{市值}}', fmtCap(currentStock.marketCap))
+            .replaceAll('{{行业地位}}', industryPosition(currentStock))
+            .replaceAll('{{价格}}', `${fmtNum(currentStock.price)} MAD`)
+            .replaceAll('{{涨跌幅}}', `${fmtNum(currentStock.changePct)}%`)
+            .replaceAll('{{成交额}}', `${fmtNum(currentStock.volumeMAD, 0)} MAD`)
+            .replaceAll('{{持仓情况}}', holdingText)
+            .replaceAll('{{组合建议}}', clientAdvice)
+            .replaceAll('{{持仓结论}}', clientAdvice)
+            .replaceAll('{{客户持仓}}', holdingText)
+            .replaceAll('{{客户建议}}', clientAdvice)
+            .replaceAll('{{明确结论}}', analysis.rating)
+            .replaceAll('{{技术面}}', analysis.paragraph)
+            .replaceAll('{{技术判断}}', analysis.paragraph)
+            .replaceAll('{{买卖双方逻辑}}', analysis.logic)
+            .replaceAll('{{配置建议}}', analysis.action)
+            .replaceAll('{{风险控制}}', analysis.risk)
+            .replaceAll('{{支撑位}}', analysis.supportText)
+            .replaceAll('{{压力位}}', analysis.resistanceText)
+            .replaceAll('{{趋势}}', analysis.trend));
+        }
+        $('stockReport').scrollIntoView({ block: 'nearest' });
+        const copied = await copyText($('stockReport').value, true);
+        saveDraft();
+        setStatus(copied ? '分析报告已生成并复制' : '分析报告已生成，请手动复制');
+      } finally {
+        button.disabled = false;
+        button.textContent = '生成并复制报告';
+      }
+    }
+
+    $('fileInput').addEventListener('change', () => readFile($('fileInput').files?.[0]));
+    $('pasteImageBtn').addEventListener('click', loadClipboardImageFromButton);
+    $('chartModeBtn').addEventListener('click', () => setWorkspaceMode('chart'));
+    $('drawModeBtn').addEventListener('click', () => setWorkspaceMode('draw'));
+    $('toggleChartDrawBtn').addEventListener('click', toggleChartDrawing);
+    $('toggleToolsBtn').addEventListener('click', toggleDrawingTools);
+    $('saveChartShotBtn').addEventListener('click', saveChartScreenshot);
+    document.addEventListener('paste', readClipboardImage);
+    $('dropZone').addEventListener('dragover', event => { event.preventDefault(); setStatus('松开即可导入图片'); });
+    $('dropZone').addEventListener('drop', event => { event.preventDefault(); readFile(event.dataTransfer.files?.[0]); });
+    $('saveImageBtn').addEventListener('click', saveImage);
+    $('undoBtn').addEventListener('click', undo);
+    $('redoBtn').addEventListener('click', redo);
+    $('clearBtn').addEventListener('click', clearAll);
+    $('newBtn').addEventListener('click', newProject);
+    document.querySelectorAll('[data-width]').forEach(btn => {
+      btn.addEventListener('click', () => setLineWidth(btn.dataset.width));
+    });
+    $('customTextBtn').addEventListener('click', () => {
+      const text = $('customText').value.trim();
+      if (text) queueText(text);
+    });
+    $('loadStockBtn').addEventListener('click', loadSelectedStock);
+    document.querySelectorAll('[data-chart-interval]').forEach(btn => {
+      btn.addEventListener('click', () => {
+        chartInterval = btn.dataset.chartInterval || 'D';
+        loadDelayedChart();
+        const label = chartInterval === 'W' ? '周线' : chartInterval === 'D' ? '日线' : `${chartInterval}分钟`;
+        setStatus(`K线周期已切换为${label}`);
+      });
+    });
+    $('autoTechBtn').addEventListener('click', fillTechnicalFromDrawing);
+    $('generateReportBtn').addEventListener('click', generateStockReport);
+    $('copyReportBtn').addEventListener('click', () => copyText($('stockReport').value || ''));
+    $('clearReportBtn').addEventListener('click', () => {
+      $('stockReport').value = '';
+      saveDraft();
+      setStatus('报告已清空');
+    });
+    $('clearTechBtn').addEventListener('click', () => {
+      $('technicalSummary').value = '';
+      saveDraft();
+      setStatus('技术面已清空');
+    });
+    $('clearHoldingBtn').addEventListener('click', clearHoldingFields);
+    $('compactSideBtn').addEventListener('click', () => {
+      document.querySelector('.app').classList.add('vocab-compact');
+      document.querySelector('.app').classList.remove('vocab-wide');
+      setStatus('词库已收起，图表区域已放大');
+    });
+    $('expandSideBtn').addEventListener('click', () => {
+      document.querySelector('.app').classList.remove('vocab-compact');
+      setStatus('词库已展开');
+    });
+    $('wideSideBtn').addEventListener('click', () => {
+      document.querySelector('.app').classList.remove('vocab-compact');
+      document.querySelector('.app').classList.add('vocab-wide');
+      setStatus('词库面板已放大');
+    });
+    $('narrowSideBtn').addEventListener('click', () => {
+      document.querySelector('.app').classList.remove('vocab-wide');
+      setStatus('词库面板已恢复默认宽度');
+    });
+    $('compactAutoTechBtn').addEventListener('click', fillTechnicalFromDrawing);
+    $('compactReportBtn').addEventListener('click', generateStockReport);
+    document.querySelectorAll('[data-tech-preset]').forEach(btn => {
+      btn.addEventListener('click', () => appendTechnicalPreset(btn.dataset.techPreset));
+    });
+    $('stockSearch').addEventListener('keydown', event => {
+      if (event.key === 'Enter') {
+        loadDelayedChart(event.target.value);
+        loadSelectedStock();
+      }
+    });
+    $('stockSelect').addEventListener('change', event => {
+      $('stockSearch').value = event.target.value || '';
+      saveDraft();
+      loadDelayedChart(event.target.value);
+    });
+    $('stockSearch').addEventListener('input', event => {
+      const start = event.target.selectionStart;
+      event.target.value = event.target.value.toUpperCase();
+      event.target.setSelectionRange(start, start);
+      saveDraft();
+      if (event.target.value.trim().length >= 2) loadDelayedChart(event.target.value);
+    });
+    draftFields
+      .filter(id => id !== 'stockSearch')
+      .forEach(id => $(id)?.addEventListener('input', saveDraft));
+    draftFields
+      .filter(id => id !== 'stockSearch')
+      .forEach(id => $(id)?.addEventListener('change', saveDraft));
+    document.addEventListener('keydown', event => {
+      const tag = event.target?.tagName;
+      const typing = tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT';
+      if ((event.ctrlKey || event.metaKey) && event.key === 'Enter') {
+        event.preventDefault();
+        generateStockReport();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 's') {
+        event.preventDefault();
+        saveImage();
+        return;
+      }
+      if (!typing && event.key === 'Escape') {
+        event.preventDefault();
+        cancelCurrentAction();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'z') {
+        event.preventDefault();
+        if (event.shiftKey) redo();
+        else undo();
+        return;
+      }
+      if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'y') {
+        event.preventDefault();
+        redo();
+        return;
+      }
+      if (!typing) {
+        const toolMap = { '1': 'trend', '2': 'arrow', '3': 'hline', '4': 'box', '5': 'text', '6': 'erase' };
+        if (toolMap[event.key]) setTool(toolMap[event.key]);
+        if (event.key === 'Delete' || event.key === 'Backspace') {
+          event.preventDefault();
+          removeLastShape();
+        }
+      }
+    });
+    $('vocabSearch').addEventListener('input', renderVocab);
+    $('vocabList').addEventListener('click', event => {
+      const btn = event.target.closest('button[data-text]');
+      if (btn) queueText(btn.dataset.text);
+    });
+
+    document.querySelectorAll('[data-tool]').forEach(btn => btn.addEventListener('click', () => setTool(btn.dataset.tool)));
+    document.querySelectorAll('[data-color]').forEach(btn => btn.addEventListener('click', () => {
+      activeColor = btn.dataset.color;
+      document.querySelectorAll('[data-color]').forEach(item => item.classList.toggle('active', item === btn));
+      setStatus('颜色已切换');
+    }));
+
+    overlayCanvas.addEventListener('dblclick', event => {
+      if (!currentImage) return;
+      const p = point(event);
+      const target = [...shapes].reverse().find(shape => shape.type === 'text' && hit(shape, p));
+      if (target) editTextShape(target);
+    });
+
+    overlayCanvas.addEventListener('pointerdown', event => {
+      if (!currentImage) return;
+      const p = point(event);
+      if (activeTool === 'erase') {
+        const next = shapes.filter(shape => !hit(shape, p));
+        if (next.length !== shapes.length) {
+          recordHistory();
+          shapes = next;
+          renderOverlay();
+          setStatus('已擦除标注');
+        }
+        return;
+      }
+      if (activeTool === 'text') {
+        const target = [...shapes].reverse().find(shape => shape.type === 'text' && hit(shape, p));
+        if (target) {
+          recordHistory();
+          dragText = { shape: target, dx: p.x - target.x1, dy: p.y - target.y1 };
+          overlayCanvas.setPointerCapture(event.pointerId);
+          setStatus('拖动文字调整位置');
+          return;
+        }
+        const text = pendingText || prompt('标注文字', '趋势 / Tendance');
+      if (text) {
+          recordHistory();
+          shapes.push({ type: 'text', x1: p.x, y1: p.y, text, color: activeColor, width: lineWidth });
+          pendingText = '';
+          renderOverlay();
+          setStatus('文字已添加');
+        }
+        return;
+      }
+      draft = { type: activeTool, x1: p.x, y1: p.y, x2: p.x, y2: p.y, color: activeColor, width: lineWidth };
+      overlayCanvas.setPointerCapture(event.pointerId);
+    });
+
+    overlayCanvas.addEventListener('pointermove', event => {
+      if (dragText) {
+        const p = point(event);
+        dragText.shape.x1 = p.x - dragText.dx;
+        dragText.shape.y1 = p.y - dragText.dy;
+        renderOverlay();
+        return;
+      }
+      if (!draft) return;
+      const p = point(event);
+      draft.x2 = p.x;
+      draft.y2 = p.y;
+      renderOverlay();
+    });
+
+    overlayCanvas.addEventListener('pointerup', event => {
+      if (dragText) {
+        dragText = null;
+        overlayCanvas.releasePointerCapture(event.pointerId);
+        renderOverlay();
+        setStatus('文字位置已调整');
+        return;
+      }
+      if (!draft) return;
+      const p = point(event);
+      draft.x2 = p.x;
+      draft.y2 = p.y;
+      const length = Math.hypot(draft.x2 - draft.x1, draft.y2 - draft.y1);
+      if (draft.type !== 'hline' && draft.type !== 'box' && length < 8) {
+        draft = null;
+        overlayCanvas.releasePointerCapture(event.pointerId);
+        renderOverlay();
+        return;
+      }
+      if (draft.type === 'box' && Math.abs(draft.x2 - draft.x1) < 8 && Math.abs(draft.y2 - draft.y1) < 8) {
+        draft = null;
+        overlayCanvas.releasePointerCapture(event.pointerId);
+        renderOverlay();
+        return;
+      }
+      recordHistory();
+      shapes.push(draft);
+      const finishedTool = toolLabels[draft.type] || '标注';
+      draft = null;
+      overlayCanvas.releasePointerCapture(event.pointerId);
+      renderOverlay();
+      setStatus(`${finishedTool}已添加`);
+    });
+
+    overlayCanvas.addEventListener('pointercancel', () => {
+      dragText = null;
+      draft = null;
+      renderOverlay();
+    });
+
+    chartOverlayCanvas.addEventListener('dblclick', event => {
+      if (!chartDrawing) return;
+      const p = point(event, chartOverlayCanvas);
+      const target = [...chartShapes].reverse().find(shape => shape.type === 'text' && hit(shape, p));
+      if (target) editTextShape(target);
+      renderChartOverlay();
+    });
+
+    chartOverlayCanvas.addEventListener('pointerdown', event => {
+      if (!chartDrawing) return;
+      resizeChartOverlay();
+      const p = point(event, chartOverlayCanvas);
+      if (activeTool === 'erase') {
+        const next = chartShapes.filter(shape => !hit(shape, p));
+        if (next.length !== chartShapes.length) {
+          chartUndoStack.push(cloneShapes(chartShapes));
+          chartRedoStack = [];
+          chartShapes = next;
+          renderChartOverlay();
+          setStatus('已擦除K线标注');
+        }
+        return;
+      }
+      if (activeTool === 'text') {
+        const target = [...chartShapes].reverse().find(shape => shape.type === 'text' && hit(shape, p));
+        if (target) {
+          chartUndoStack.push(cloneShapes(chartShapes));
+          chartRedoStack = [];
+          chartDragText = { shape: target, dx: p.x - target.x1, dy: p.y - target.y1 };
+          chartOverlayCanvas.setPointerCapture(event.pointerId);
+          setStatus('拖动K线文字调整位置');
+          return;
+        }
+        const text = pendingText || prompt('标注文字', '趋势 / Tendance');
+        if (text) {
+          chartUndoStack.push(cloneShapes(chartShapes));
+          chartRedoStack = [];
+          chartShapes.push({ type: 'text', x1: p.x, y1: p.y, text, color: activeColor, width: lineWidth });
+          pendingText = '';
+          renderChartOverlay();
+          setStatus('K线文字已添加');
+        }
+        return;
+      }
+      chartDraft = { type: activeTool, x1: p.x, y1: p.y, x2: p.x, y2: p.y, color: activeColor, width: lineWidth };
+      chartOverlayCanvas.setPointerCapture(event.pointerId);
+    });
+
+    chartOverlayCanvas.addEventListener('pointermove', event => {
+      if (!chartDrawing) return;
+      const p = point(event, chartOverlayCanvas);
+      if (chartDragText) {
+        chartDragText.shape.x1 = p.x - chartDragText.dx;
+        chartDragText.shape.y1 = p.y - chartDragText.dy;
+        renderChartOverlay();
+        return;
+      }
+      if (!chartDraft) return;
+      chartDraft.x2 = p.x;
+      chartDraft.y2 = p.y;
+      renderChartOverlay();
+    });
+
+    chartOverlayCanvas.addEventListener('pointerup', event => {
+      if (!chartDrawing) return;
+      if (chartDragText) {
+        chartDragText = null;
+        chartOverlayCanvas.releasePointerCapture(event.pointerId);
+        renderChartOverlay();
+        setStatus('K线文字位置已调整');
+        return;
+      }
+      if (!chartDraft) return;
+      const p = point(event, chartOverlayCanvas);
+      chartDraft.x2 = p.x;
+      chartDraft.y2 = p.y;
+      const length = Math.hypot(chartDraft.x2 - chartDraft.x1, chartDraft.y2 - chartDraft.y1);
+      if (chartDraft.type !== 'hline' && chartDraft.type !== 'box' && length < 8) {
+        chartDraft = null;
+        chartOverlayCanvas.releasePointerCapture(event.pointerId);
+        renderChartOverlay();
+        return;
+      }
+      chartUndoStack.push(cloneShapes(chartShapes));
+      chartRedoStack = [];
+      chartShapes.push(chartDraft);
+      const finishedTool = toolLabels[chartDraft.type] || '标注';
+      chartDraft = null;
+      chartOverlayCanvas.releasePointerCapture(event.pointerId);
+      renderChartOverlay();
+      setStatus(`K线${finishedTool}已添加`);
+    });
+
+    chartOverlayCanvas.addEventListener('pointercancel', () => {
+      if (!chartDrawing) return;
+      chartDragText = null;
+      chartDraft = null;
+      renderChartOverlay();
+    });
+
+    resizeCanvases(1280, 720);
+    restoreDraft();
+    setWorkspaceMode('chart');
+    loadDelayedChart();
+    renderVocab();
+    loadStocks();
+    window.addEventListener('resize', () => {
+      if (workspaceMode === 'chart') resizeChartOverlay();
+    });
+  </script>
+</body>
+</html>
